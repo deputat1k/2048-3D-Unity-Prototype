@@ -10,8 +10,7 @@ public class DeadZone : MonoBehaviour
         // Перевіряємо, чи це кубик
         if (other.GetComponent<Cube>() != null)
         {
-            // Якщо кубик пролітає повз не рахуємо
-            // Рахуємо, тільки якщо він майже зупинився
+      
             if (other.attachedRigidbody.linearVelocity.magnitude < 0.1f) 
             {
                 timer += Time.deltaTime;

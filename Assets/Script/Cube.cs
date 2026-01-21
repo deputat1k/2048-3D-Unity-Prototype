@@ -1,107 +1,141 @@
 using UnityEngine;
-using TMPro;
+using TMPro; 
 
 public class Cube : MonoBehaviour
 {
-    [Header("Game Settings")]
+    [Header("Settings")]
     public int Value = 2;
-    private int ID;
+    [SerializeField] private GameSettings settings;
 
-    [Header("Visual References")]
+    [Header("Visuals")]
     [SerializeField] private TMP_Text[] valueTexts;
     [SerializeField] private Renderer cubeRenderer;
 
     private Rigidbody rb;
-    private bool hasMerged = false;
+    private bool hasMerged = false; 
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        ID = GetInstanceID();
+    }
 
+    private void Start()
+    {
         UpdateVisuals();
     }
 
     public void UpdateVisuals()
     {
-        // Оновлюємо текст 
+ 
         if (valueTexts != null)
         {
-            foreach (var textItem in valueTexts)
+            foreach (var text in valueTexts)
             {
-                if (textItem != null)
-                    textItem.text = Value.ToString();
+                text.text = Value.ToString();
             }
         }
 
-        // Оновлюємо колір
-        if (cubeRenderer != null)
+ 
+        if (cubeRenderer != null && settings != null)
         {
             cubeRenderer.material.color = GetColorForValue(Value);
         }
     }
 
+    private Color GetColorForValue(int value)
+    {
+        if (settings == null || settings.CubeColors == null) return Color.white;
+        int index = (int)Mathf.Log(value, 2) - 1;
+        if (index >= 0 && index < settings.CubeColors.Length)
+            return settings.CubeColors[index];
+        return Color.white;
+    }
+
+   
+    public void Move(float deltaX)
+    {
+        if (settings == null) return;
+        Vector3 pos = transform.position;
+        pos.x += deltaX * settings.MoveSpeed * Time.deltaTime;
+        pos.x = Mathf.Clamp(pos.x, -settings.XLimit, settings.XLimit);
+        transform.position = pos;
+    }
+
+    public void Shoot()
+    {
+        if (rb != null && settings != null)
+        {
+            rb.AddForce(Vector3.forward * settings.PushForce, ForceMode.Impulse);
+        }
+    }
+
+
+  
+    public void ResetCube()
+    {
+        hasMerged = false;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = false;
+        }
+
+        transform.rotation = Quaternion.identity;
+        gameObject.SetActive(true);
+    }
+
+    public void Deactivate()
+    {
+        gameObject.SetActive(false);
+    }
+
+ 
     private void OnCollisionEnter(Collision collision)
     {
+  
         if (hasMerged) return;
 
         Cube otherCube = collision.gameObject.GetComponent<Cube>();
 
-        if (otherCube != null)
+        
+        if (otherCube != null && otherCube.Value == Value &&
+            this.GetInstanceID() < otherCube.GetInstanceID())
         {
-            if (Value == otherCube.Value && this.ID < otherCube.GetID())
-            {
-                hasMerged = true;
-                otherCube.hasMerged = true;
-                Merge(this, otherCube);
-            }
+            Merge(otherCube);
         }
     }
-
-    // Допоміжний метод щоб отримати ID іншого кубика 
-    public int GetID()
+    public void Bounce()
     {
-        return ID;
-    }
-
-    private void Merge(Cube cube1, Cube cube2)
-    {
-        Vector3 pos = Vector3.Lerp(cube1.transform.position, cube2.transform.position, 0.5f);
-
-        Cube newCube = Instantiate(this, pos, Quaternion.identity);
-        newCube.GetComponent<Collider>().enabled = true;
-
-        int points = cube1.Value / 2;
-        ScoreManager.Instance.AddScore(points);
-
-        newCube.Value = cube1.Value * 2;
-        newCube.hasMerged = false;
-        newCube.UpdateVisuals();
-
-        Rigidbody newRb = newCube.GetComponent<Rigidbody>();
-        if (newRb != null)
+        if (rb != null && settings != null)
         {
-            // Для Unity 6
-            newRb.linearVelocity = Vector3.zero;
-            newRb.angularVelocity = Vector3.zero;
-            newRb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
+            rb.AddForce(Vector3.up * settings.MergePushForce, ForceMode.Impulse);
+        }
+    }
+    private void Merge(Cube otherCube)
+    {
+        hasMerged = true;
+        otherCube.hasMerged = true;
+
+        int newValue = Value * 2;
+
+        Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
+        spawnPos.y += 0.5f;
+
+        CubeSpawner.Instance.ReturnToPool(this);
+        CubeSpawner.Instance.ReturnToPool(otherCube);
+
+        Cube newCube = CubeSpawner.Instance.SpawnSpecific(spawnPos, newValue);
+
+        if (newCube != null)
+        {
+            newCube.Bounce();
         }
 
-        Destroy(cube1.gameObject);
-        Destroy(cube2.gameObject);
-    }
-
-    private Color GetColorForValue(int value)
-    {
-        switch (value)
+        if (ScoreBank.Instance != null)
         {
-            case 2: return new Color(0.9f, 0.9f, 0.9f);
-            case 4: return new Color(1f, 0.9f, 0.6f);
-            case 8: return new Color(1f, 0.7f, 0.4f);
-            case 16: return new Color(1f, 0.5f, 0.3f);
-            case 32: return new Color(1f, 0.3f, 0.3f);
-            case 64: return new Color(1f, 0f, 0f);
-            default: return Color.magenta;
+            ScoreBank.Instance.AddScore(1);
         }
     }
 }

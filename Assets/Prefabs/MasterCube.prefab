@@ -162,6 +162,7 @@ MonoBehaviour:
   - {fileID: 1464233132184578372}
   - {fileID: 1381405357695516172}
   cubeRenderer: {fileID: 4079918906962754890}
+  settings: {fileID: 11400000, guid: f0d5e93343ba6d142b35583bfbda5d8d, type: 2}
 --- !u!1 &2256232634131292006
 GameObject:
   m_ObjectHideFlags: 0
