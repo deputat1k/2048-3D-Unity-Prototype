@@ -1,29 +1,38 @@
 using TMPro;
 using UnityEngine;
-
+using Zenject; 
 public class ScoreView : MonoBehaviour
 {
     [SerializeField] private TMP_Text scoreText;
 
+    private ScoreBank scoreBank;
+
+
+    [Inject]
+    public void Construct(ScoreBank scoreBank)
+    {
+        this.scoreBank = scoreBank;
+    }
+ 
+
     private void Start()
     {
-        if (ScoreBank.Instance != null)
+        if (scoreBank != null)
         {
-            ScoreBank.Instance.OnScoreChanged += UpdateScoreText;
-            UpdateScoreText(ScoreBank.Instance.GetScore());
+            scoreBank.OnScoreChanged += UpdateScoreText;
+            UpdateScoreText(scoreBank.GetScore());
         }
     }
 
     private void OnDestroy()
     {
-        //відписуємось, коли об'єкт знищується
-        if (ScoreBank.Instance != null)
+    
+        if (scoreBank != null)
         {
-            ScoreBank.Instance.OnScoreChanged -= UpdateScoreText;
+            scoreBank.OnScoreChanged -= UpdateScoreText;
         }
     }
 
-    // Цей метод викличеться коли Банк крикне "OnScoreChanged"
     private void UpdateScoreText(int newScore)
     {
         scoreText.text = "Score: " + newScore;

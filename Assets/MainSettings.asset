@@ -12,8 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ef8f25c3cfbfe841b1d93ba1c367bb4, type: 3}
   m_Name: MainSettings
   m_EditorClassIdentifier: 
-  MoveSpeed: 0.2
-  XLimit: 2.3
+  MoveSpeed: 0.5
   PushForce: 20
   MergePushForce: 3
   CubeColors:

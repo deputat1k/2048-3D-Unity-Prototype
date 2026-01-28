@@ -1,47 +1,42 @@
 using System.Collections;
 using UnityEngine;
-
+using Zenject;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance;
-   
 
-    [Header("Components")]
-    [SerializeField] private InputHandler inputHandler;
+    [Header("UI & Level")]
     [SerializeField] private UIManager uiManager;
     [SerializeField] private LevelLoader levelLoader;
-    [SerializeField] private CubeSpawner cubeSpawner;
-
-    [Header("Game Data")]
     [SerializeField] private GameSettings settings;
 
+  
+    private IInputHandler inputHandler;
+    private CubeSpawner cubeSpawner;
+    private DeadZone deadZone;
     private Cube currentCubeScript;
-    
     private bool isGameOver = false;
 
-    private void Awake()
+    [Inject]
+    public void Construct(IInputHandler input, CubeSpawner spawner, DeadZone deadZone)
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        this.inputHandler = input;
+        this.cubeSpawner = spawner;
+        this.deadZone = deadZone;
     }
+ 
+   
 
     private void OnEnable()
     {
-        if (inputHandler != null)
-        {
-            inputHandler.OnDrag += MoveCube;
-            inputHandler.OnRelease += ShootCube;
-        }
+        if (inputHandler != null) inputHandler.OnRelease += OnPlayerReleased;
+        if (deadZone != null) deadZone.OnZoneFilled += GameOver;
     }
 
     private void OnDisable()
     {
-        if (inputHandler != null)
-        {
-            inputHandler.OnDrag -= MoveCube;
-            inputHandler.OnRelease -= ShootCube;
-        }
+        if (inputHandler != null) inputHandler.OnRelease -= OnPlayerReleased;
+        if (deadZone != null) deadZone.OnZoneFilled -= GameOver;
     }
 
     private void Start()
@@ -49,20 +44,10 @@ public class GameManager : MonoBehaviour
         SpawnNewCube();
     }
 
-    private void MoveCube(float deltaX)
-    {
-        // Якщо куба немає або гра закінчилась - виходимо
-        if (isGameOver || currentCubeScript == null) return;
-        currentCubeScript.Move(deltaX);
-    }
-
-    private void ShootCube()
+    private void OnPlayerReleased()
     {
         if (isGameOver || currentCubeScript == null) return;
-
-        currentCubeScript.Shoot();
         currentCubeScript = null;
-
         StartCoroutine(SpawnRoutine(1f));
     }
 
@@ -75,8 +60,6 @@ public class GameManager : MonoBehaviour
     private void SpawnNewCube()
     {
         if (isGameOver) return;
-
-        // Спавнер повертає скрипт, ми його запам'ятовуємо
         currentCubeScript = cubeSpawner.Spawn();
     }
 
@@ -84,16 +67,11 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver) return;
         isGameOver = true;
-
-        //Просимо менеджера показати екран
         if (uiManager != null) uiManager.ShowGameOver();
     }
 
     public void RestartGame()
     {
-        if (levelLoader != null)
-        {
-            levelLoader.ReloadCurrentLevel();
-        }
+        if (levelLoader != null) levelLoader.ReloadCurrentLevel();
     }
 }

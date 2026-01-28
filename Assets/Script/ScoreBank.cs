@@ -1,28 +1,26 @@
-using System; 
 using UnityEngine;
+using System;
 
 public class ScoreBank : MonoBehaviour
 {
-    public static ScoreBank Instance;
 
-    //Підписники отримають нове число
-    public event Action<int> OnScoreChanged;
+
+    public event Action<int> OnScoreChanged; 
 
     private int score;
 
-    private void Awake()
-    {
-        if (Instance == null) Instance = this;
-    }
+    public int GetScore() => score;
 
     public void AddScore(int amount)
     {
         score += amount;
 
-        // Сповіщаємо всіх, хто підписаний що рахунок змінився
         OnScoreChanged?.Invoke(score);
     }
 
-    // Метод щоб дізнатися поточний рахунок
-    public int GetScore() => score;
+    public void ResetScore()
+    {
+        score = 0;
+        OnScoreChanged?.Invoke(score);
+    }
 }

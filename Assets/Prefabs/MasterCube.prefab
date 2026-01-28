@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4040274533149208414}
   - component: {fileID: 6485032633314513098}
   - component: {fileID: 1631207975307160087}
+  - component: {fileID: 8923084298418243024}
   m_Layer: 0
   m_Name: MasterCube
   m_TagString: Untagged
@@ -155,6 +156,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Value: 2
+  settings: {fileID: 11400000, guid: f0d5e93343ba6d142b35583bfbda5d8d, type: 2}
   valueTexts:
   - {fileID: 3971548022882116319}
   - {fileID: 7811923531703523544}
@@ -162,7 +164,18 @@ MonoBehaviour:
   - {fileID: 1464233132184578372}
   - {fileID: 1381405357695516172}
   cubeRenderer: {fileID: 4079918906962754890}
-  settings: {fileID: 11400000, guid: f0d5e93343ba6d142b35583bfbda5d8d, type: 2}
+--- !u!114 &8923084298418243024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 468642906199084572}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 375b8e06fe12fa1429eb0120bcd61ccc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2256232634131292006
 GameObject:
   m_ObjectHideFlags: 0

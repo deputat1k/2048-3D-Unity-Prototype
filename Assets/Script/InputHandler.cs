@@ -1,7 +1,7 @@
 using UnityEngine;
 using System;
 
-public class InputHandler : MonoBehaviour
+public class InputHandler : MonoBehaviour ,IInputHandler
 {
     
     public event Action<float> OnDrag;  
@@ -17,21 +17,21 @@ public class InputHandler : MonoBehaviour
         {
             isDragging = true;
             lastMouseX = Input.mousePosition.x;
-            OnTouchDown?.Invoke(); // Повідомляємо всіх хто слухає
+            OnTouchDown?.Invoke(); 
         }
 
    
         if (Input.GetMouseButton(0) && isDragging)
         {
             float delta = Input.mousePosition.x - lastMouseX;
-            OnDrag?.Invoke(delta); // Передаємо різницю руху
+            OnDrag?.Invoke(delta);
             lastMouseX = Input.mousePosition.x;
         }
 
         if (Input.GetMouseButtonUp(0) && isDragging)
         {
             isDragging = false;
-            OnRelease?.Invoke(); // Повідомляємо про постріл
+            OnRelease?.Invoke(); 
         }
     }
 }

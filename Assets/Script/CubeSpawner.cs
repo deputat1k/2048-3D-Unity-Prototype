@@ -1,58 +1,51 @@
-using System.Collections.Generic;
-using UnityEngine;
+п»їusing UnityEngine;
+using Zenject;
 
 public class CubeSpawner : MonoBehaviour
 {
-    public static CubeSpawner Instance;
-
     [Header("Spawn Settings")]
     [SerializeField] private Cube cubePrefab;
     [SerializeField] private Transform spawnPoint;
-    [SerializeField] private int poolSize = 10; // Скільки кубиків заготувати на старті
+    [SerializeField] private int poolSize = 10;
+    [SerializeField] private Transform poolContainer;
 
+    [Header("Borders")]
+    [SerializeField] private Transform leftBorder;
+    [SerializeField] private Transform rightBorder;
 
-    private Queue<Cube> cubePool = new Queue<Cube>();
+    private ObjectPool<Cube> pool;
+
+    // Р—Р°Р»РµР¶РЅРѕСЃС‚С–, СЏРєС– РїСЂРёР№РґСѓС‚СЊ С‡РµСЂРµР· Zenject
+    private IInputHandler inputHandler;
+    private ScoreBank scoreBank;
+
+    // Р†РЅ'С”РєС†С–СЏ Р·Р°Р»РµР¶РЅРѕСЃС‚РµР№
+    [Inject]
+    public void Construct(IInputHandler inputHandler, ScoreBank scoreBank)
+    {
+        this.inputHandler = inputHandler;
+        this.scoreBank = scoreBank;
+    }
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-
-  
-        InitializePool();
+        pool = new ObjectPool<Cube>(cubePrefab, poolSize, poolContainer);
     }
-
-    private void InitializePool()
-    {
-        for (int i = 0; i < poolSize; i++)
-        {
-            Cube newCube = Instantiate(cubePrefab, spawnPoint.position, Quaternion.identity);
-            newCube.gameObject.SetActive(false); 
-            cubePool.Enqueue(newCube);
-        }
-    }
-
 
     public Cube Spawn()
     {
-        Cube cubeToSpawn;
+        Cube cubeToSpawn = pool.GetElement();
 
-        //  Перевіряємо, чи є вільні кубики
-        if (cubePool.Count > 0)
-        {
-            cubeToSpawn = cubePool.Dequeue();
-        }
-        else
-        {
-            // Якщо не вистачило - створюємо новий 
-            cubeToSpawn = Instantiate(cubePrefab);
-        }
-
-        //  Ставимо його на позицію старту
         cubeToSpawn.transform.position = spawnPoint.position;
-
         cubeToSpawn.ResetCube();
+        cubeToSpawn.Init(leftBorder.position.x, rightBorder.position.x);
+        cubeToSpawn.Construct(this, scoreBank);
 
-        //  рандом чисел
+        var presenter = cubeToSpawn.GetComponent<CubeInputPresenter>();
+        if (presenter == null) presenter = cubeToSpawn.gameObject.AddComponent<CubeInputPresenter>();
+        presenter.enabled = true;
+        presenter.Construct(cubeToSpawn, inputHandler);
+
         float random = Random.value;
         cubeToSpawn.Value = (random > 0.75f) ? 4 : 2;
         cubeToSpawn.UpdateVisuals();
@@ -60,32 +53,22 @@ public class CubeSpawner : MonoBehaviour
         return cubeToSpawn;
     }
 
-
-    public void ReturnToPool(Cube cube)
-    {
-        cube.Deactivate();
-        cubePool.Enqueue(cube); // Кладемо назад в кінець черги
-    }
     public Cube SpawnSpecific(Vector3 position, int value)
     {
-        Cube cubeToSpawn;
-
-        if (cubePool.Count > 0)
-        {
-            cubeToSpawn = cubePool.Dequeue();
-        }
-        else
-        {
-            cubeToSpawn = Instantiate(cubePrefab);
-        }
+        Cube cubeToSpawn = pool.GetElement();
 
         cubeToSpawn.transform.position = position;
         cubeToSpawn.ResetCube();
-
-        // Ставимо конкретне значення
+        cubeToSpawn.Init(leftBorder.position.x, rightBorder.position.x);
+        cubeToSpawn.Construct(this, scoreBank);
         cubeToSpawn.Value = value;
         cubeToSpawn.UpdateVisuals();
 
         return cubeToSpawn;
+    }
+
+    public void ReturnToPool(Cube cube)
+    {
+        pool.ReturnElement(cube);
     }
 }

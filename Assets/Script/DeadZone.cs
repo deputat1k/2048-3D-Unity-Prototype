@@ -1,39 +1,52 @@
 using UnityEngine;
+using System;
 
 public class DeadZone : MonoBehaviour
 {
-    private float timer = 0f;
-    private bool isCubeInside = false;
+    [Header("Settings")]
+    [SerializeField] private float timeToLose = 2.0f;
 
-    private void OnTriggerStay(Collider other)
+    public event Action OnZoneFilled;
+    private int cubesInsideCount = 0;
+    private float timer = 0f;
+
+    private void OnTriggerEnter(Collider other)
     {
-        // ѕерев≥р€Їмо, чи це кубик
         if (other.GetComponent<Cube>() != null)
         {
-      
-            if (other.attachedRigidbody.linearVelocity.magnitude < 0.1f) 
-            {
-                timer += Time.deltaTime;
-            }
-            else
-            {
-                timer = 0f;
-            }
-
-            // якщо кубик лежить тут вже 2 секунди
-            if (timer > 1f)
-            {
-                GameManager.Instance.GameOver();
-            }
+            cubesInsideCount++;
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        // якщо кубик вилет≥в ≥з зони - скидаЇмо таймер
         if (other.GetComponent<Cube>() != null)
         {
-            timer = 0f;
+            cubesInsideCount--;
+            if (cubesInsideCount < 0) cubesInsideCount = 0;
+
+            if (cubesInsideCount == 0)
+            {
+                timer = 0f;
+            }
+        }
+    }
+
+    private void Update()
+    {
+        
+        if (cubesInsideCount > 0)
+        {
+            timer += Time.deltaTime;
+
+            if (timer >= timeToLose)
+            {
+                OnZoneFilled?.Invoke();
+
+                // —кидаЇмо, щоб не спамити
+                timer = 0f;
+                cubesInsideCount = 0;
+            }
         }
     }
 }

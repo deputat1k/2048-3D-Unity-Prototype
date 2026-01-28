@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro; 
+using TMPro;
 
 public class Cube : MonoBehaviour
 {
@@ -12,7 +12,13 @@ public class Cube : MonoBehaviour
     [SerializeField] private Renderer cubeRenderer;
 
     private Rigidbody rb;
-    private bool hasMerged = false; 
+    private bool hasMerged = false;
+
+    private float minX;
+    private float maxX;
+
+    private CubeSpawner spawner;
+    private ScoreBank scoreBank;
 
     private void Awake()
     {
@@ -24,18 +30,24 @@ public class Cube : MonoBehaviour
         UpdateVisuals();
     }
 
+    public void Construct(CubeSpawner spawner, ScoreBank scoreBank)
+    {
+        this.spawner = spawner;
+        this.scoreBank = scoreBank;
+    }
+
+    public void Init(float leftLimit, float rightLimit)
+    {
+        minX = leftLimit;
+        maxX = rightLimit;
+    }
+
     public void UpdateVisuals()
     {
- 
         if (valueTexts != null)
         {
-            foreach (var text in valueTexts)
-            {
-                text.text = Value.ToString();
-            }
+            foreach (var text in valueTexts) text.text = Value.ToString();
         }
-
- 
         if (cubeRenderer != null && settings != null)
         {
             cubeRenderer.material.color = GetColorForValue(Value);
@@ -46,18 +58,16 @@ public class Cube : MonoBehaviour
     {
         if (settings == null || settings.CubeColors == null) return Color.white;
         int index = (int)Mathf.Log(value, 2) - 1;
-        if (index >= 0 && index < settings.CubeColors.Length)
-            return settings.CubeColors[index];
+        if (index >= 0 && index < settings.CubeColors.Length) return settings.CubeColors[index];
         return Color.white;
     }
 
-   
     public void Move(float deltaX)
     {
         if (settings == null) return;
         Vector3 pos = transform.position;
         pos.x += deltaX * settings.MoveSpeed * Time.deltaTime;
-        pos.x = Mathf.Clamp(pos.x, -settings.XLimit, settings.XLimit);
+        pos.x = Mathf.Clamp(pos.x, minX, maxX);
         transform.position = pos;
     }
 
@@ -69,19 +79,15 @@ public class Cube : MonoBehaviour
         }
     }
 
-
-  
     public void ResetCube()
     {
         hasMerged = false;
-
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.isKinematic = false;
         }
-
         transform.rotation = Quaternion.identity;
         gameObject.SetActive(true);
     }
@@ -91,21 +97,6 @@ public class Cube : MonoBehaviour
         gameObject.SetActive(false);
     }
 
- 
-    private void OnCollisionEnter(Collision collision)
-    {
-  
-        if (hasMerged) return;
-
-        Cube otherCube = collision.gameObject.GetComponent<Cube>();
-
-        
-        if (otherCube != null && otherCube.Value == Value &&
-            this.GetInstanceID() < otherCube.GetInstanceID())
-        {
-            Merge(otherCube);
-        }
-    }
     public void Bounce()
     {
         if (rb != null && settings != null)
@@ -113,6 +104,20 @@ public class Cube : MonoBehaviour
             rb.AddForce(Vector3.up * settings.MergePushForce, ForceMode.Impulse);
         }
     }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Cube otherCube = collision.gameObject.GetComponent<Cube>();
+
+        if (hasMerged) return;
+
+        if (otherCube != null && otherCube.Value == Value &&
+            this.GetInstanceID() < otherCube.GetInstanceID())
+        {
+            Merge(otherCube);
+        }
+    }
+
     private void Merge(Cube otherCube)
     {
         hasMerged = true;
@@ -123,19 +128,21 @@ public class Cube : MonoBehaviour
         Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
         spawnPos.y += 0.5f;
 
-        CubeSpawner.Instance.ReturnToPool(this);
-        CubeSpawner.Instance.ReturnToPool(otherCube);
-
-        Cube newCube = CubeSpawner.Instance.SpawnSpecific(spawnPos, newValue);
-
-        if (newCube != null)
+        if (spawner != null)
         {
-            newCube.Bounce();
+            spawner.ReturnToPool(this);
+            spawner.ReturnToPool(otherCube);
+
+            Cube newCube = spawner.SpawnSpecific(spawnPos, newValue);
+            if (newCube != null)
+            {
+                newCube.Bounce();
+            }
         }
 
-        if (ScoreBank.Instance != null)
+        if (scoreBank != null)
         {
-            ScoreBank.Instance.AddScore(1);
+            scoreBank.AddScore(1);
         }
     }
 }
