@@ -1,7 +1,12 @@
 using System.Collections;
 using UnityEngine;
 using Zenject;
+using Cube2048.Gameplay; 
+using Cube2048.Input;    
+using Cube2048.UI;       
+using Cube2048.Data;
 
+namespace Cube2048.Core {  
 public class GameManager : MonoBehaviour
 {
 
@@ -74,4 +79,5 @@ public class GameManager : MonoBehaviour
     {
         if (levelLoader != null) levelLoader.ReloadCurrentLevel();
     }
+}
 }

@@ -1,5 +1,8 @@
 using UnityEngine;
 using Zenject;
+using Cube2048.Gameplay; 
+using Cube2048.Input;    
+using Cube2048.Core;
 
 public class GameInstaller : MonoInstaller
 {
