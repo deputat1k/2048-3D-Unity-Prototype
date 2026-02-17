@@ -1,5 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
+using UnityEngine.EventSystems;
+using Cube2048.Core.Interfaces; 
 
 namespace Cube2048.Input
 {
@@ -13,9 +15,15 @@ namespace Cube2048.Input
         private bool isDragging = false;
 
         void Update()
-        { 
+        {
             if (UnityEngine.Input.GetMouseButtonDown(0))
             {
+                if (EventSystem.current.IsPointerOverGameObject()) return;
+
+                // Перевірка на тач для мобільних
+                if (UnityEngine.Input.touchCount > 0 &&
+                    EventSystem.current.IsPointerOverGameObject(UnityEngine.Input.GetTouch(0).fingerId)) return;
+
                 isDragging = true;
                 lastMouseX = UnityEngine.Input.mousePosition.x;
                 OnTouchDown?.Invoke();
@@ -23,9 +31,12 @@ namespace Cube2048.Input
 
             if (UnityEngine.Input.GetMouseButton(0) && isDragging)
             {
-                float delta = UnityEngine.Input.mousePosition.x - lastMouseX;
+                float currentMouseX = UnityEngine.Input.mousePosition.x;
+                float delta = currentMouseX - lastMouseX;
+
                 OnDrag?.Invoke(delta);
-                lastMouseX = UnityEngine.Input.mousePosition.x;
+
+                lastMouseX = currentMouseX;
             }
 
             if (UnityEngine.Input.GetMouseButtonUp(0) && isDragging)

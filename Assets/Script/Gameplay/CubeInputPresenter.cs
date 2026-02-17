@@ -1,6 +1,7 @@
 using UnityEngine;
 using Zenject;
 using Cube2048.Input;
+using Cube2048.Core.Interfaces;
 
 namespace Cube2048.Gameplay
 {

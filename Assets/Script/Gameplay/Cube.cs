@@ -1,40 +1,49 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using Zenject;
 using Cube2048.Data;
-using Cube2048.Core;
+using Cube2048.Core.Interfaces; // Підключаємо інтерфейси
 
 namespace Cube2048.Gameplay
 {
     public class Cube : MonoBehaviour
     {
         [Header("Settings")]
-        public int Value = 2;
+        // Використовуємо backing field для властивості
+        [SerializeField] private int initialValue = 2;
         [SerializeField] private GameSettings settings;
 
         [Header("Visuals")]
         [SerializeField] private TMP_Text[] valueTexts;
         [SerializeField] private Renderer cubeRenderer;
 
+        // Властивість Value (Публічна для читання, приватна для запису)
+        public int Value { get; private set; }
+
+        // 🔥 Тільки одна змінна для Спавнера (Інтерфейс)
+        private ICubeSpawner spawner;
+
+        // 🔥 Тільки одна змінна для Очок (Інтерфейс)
+        private IScoreService scoreService;
+
         private Rigidbody rb;
         private bool hasMerged = false;
-
         private float minX;
         private float maxX;
 
-        private CubeSpawner spawner;
-        private ScoreBank scoreBank;
-
         [Inject]
-        public void Construct(CubeSpawner spawner, ScoreBank scoreBank)
+        // 🔥 Конструктор приймає ТІЛЬКИ інтерфейси
+        public void Construct(ICubeSpawner spawner, IScoreService scoreService)
         {
             this.spawner = spawner;
-            this.scoreBank = scoreBank;
+            this.scoreService = scoreService;
         }
 
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            // Ініціалізуємо Value значенням з інспектора при старті
+            Value = initialValue;
         }
 
         private void Start()
@@ -48,12 +57,21 @@ namespace Cube2048.Gameplay
             maxX = rightLimit;
         }
 
+        // Метод для оновлення значення (наприклад, при спавні з пулу)
+        public void SetValue(int newValue)
+        {
+            Value = newValue;
+            UpdateVisuals();
+        }
+
         public void UpdateVisuals()
         {
             if (valueTexts != null)
             {
-                foreach (var text in valueTexts) text.text = Value.ToString();
+                foreach (var text in valueTexts)
+                    if (text != null) text.text = Value.ToString();
             }
+
             if (cubeRenderer != null && settings != null)
             {
                 cubeRenderer.material.color = GetColorForValue(Value);
@@ -63,8 +81,15 @@ namespace Cube2048.Gameplay
         private Color GetColorForValue(int value)
         {
             if (settings == null || settings.CubeColors == null) return Color.white;
+
+            // value має бути > 0
+            if (value <= 0) return Color.white;
+
             int index = (int)Mathf.Log(value, 2) - 1;
-            if (index >= 0 && index < settings.CubeColors.Length) return settings.CubeColors[index];
+
+            if (index >= 0 && index < settings.CubeColors.Length)
+                return settings.CubeColors[index];
+
             return Color.white;
         }
 
@@ -90,9 +115,10 @@ namespace Cube2048.Gameplay
             hasMerged = false;
             if (rb != null)
             {
+                rb.isKinematic = false;
+                // Для Unity 6 використовуй linearVelocity, для старих - velocity
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
-                rb.isKinematic = false;
             }
             transform.rotation = Quaternion.identity;
             gameObject.SetActive(true);
@@ -107,22 +133,28 @@ namespace Cube2048.Gameplay
         {
             if (rb != null && settings != null)
             {
-                rb.AddForce(Vector3.up * settings.MergePushForce, ForceMode.Impulse);
+                // Додаємо трохи рандому, щоб не стояли стовпчиком
+                Vector3 randomDir = Random.insideUnitSphere * 0.5f;
+                randomDir.y = 0;
+                rb.AddForce((Vector3.up + randomDir) * settings.MergePushForce, ForceMode.Impulse);
             }
         }
 
         private void OnCollisionEnter(Collision collision)
         {
+            if (hasMerged) return;
             if (collision.gameObject == null) return;
 
-            Cube otherCube = collision.gameObject.GetComponent<Cube>();
-
-            if (hasMerged) return;
-
-            if (otherCube != null && otherCube.Value == Value &&
-                this.GetInstanceID() < otherCube.GetInstanceID())
+            // Намагаємось отримати компонент Cube
+            if (collision.gameObject.TryGetComponent<Cube>(out Cube otherCube))
             {
-                Merge(otherCube);
+                if (otherCube.hasMerged) return;
+
+                // Перевірка: однакове значення і ID (щоб зливався тільки один, а не обидва одразу)
+                if (otherCube.Value == Value && this.GetInstanceID() < otherCube.GetInstanceID())
+                {
+                    Merge(otherCube);
+                }
             }
         }
 
@@ -136,6 +168,7 @@ namespace Cube2048.Gameplay
             Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
             spawnPos.y += 0.5f;
 
+            // Використовуємо інтерфейси
             if (spawner != null)
             {
                 spawner.ReturnToPool(this);
@@ -148,9 +181,9 @@ namespace Cube2048.Gameplay
                 }
             }
 
-            if (scoreBank != null)
+            if (scoreService != null)
             {
-                scoreBank.AddScore(1);
+                scoreService.AddScore(newValue); // Додаємо значення куба, а не 1
             }
         }
     }

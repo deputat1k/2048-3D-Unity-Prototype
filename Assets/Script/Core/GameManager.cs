@@ -1,83 +1,89 @@
 using System.Collections;
 using UnityEngine;
 using Zenject;
-using Cube2048.Gameplay; 
-using Cube2048.Input;    
-using Cube2048.UI;       
+using Cube2048.Gameplay;
+using Cube2048.UI;
 using Cube2048.Data;
+using Cube2048.Core.Interfaces; // Тепер це спрацює, бо ми змінили namespace в IInputHandler
 
-namespace Cube2048.Core {  
-public class GameManager : MonoBehaviour
+namespace Cube2048.Core
 {
-
-    [Header("UI & Level")]
-    [SerializeField] private UIManager uiManager;
-    [SerializeField] private LevelLoader levelLoader;
-    [SerializeField] private GameSettings settings;
-
-  
-    private IInputHandler inputHandler;
-    private CubeSpawner cubeSpawner;
-    private DeadZone deadZone;
-    private Cube currentCubeScript;
-    private bool isGameOver = false;
-
-    [Inject]
-    public void Construct(IInputHandler input, CubeSpawner spawner, DeadZone deadZone)
+    public class GameManager : MonoBehaviour
     {
-        this.inputHandler = input;
-        this.cubeSpawner = spawner;
-        this.deadZone = deadZone;
-    }
- 
-   
+        [Header("UI & Level")]
+        [SerializeField] private UIManager uiManager;
+        [SerializeField] private LevelLoader levelLoader;
+        [SerializeField] private GameSettings settings;
 
-    private void OnEnable()
-    {
-        if (inputHandler != null) inputHandler.OnRelease += OnPlayerReleased;
-        if (deadZone != null) deadZone.OnZoneFilled += GameOver;
-    }
+        // DeadZone, якщо він прив'язаний в інспекторі
+        [SerializeField] private DeadZone deadZone;
 
-    private void OnDisable()
-    {
-        if (inputHandler != null) inputHandler.OnRelease -= OnPlayerReleased;
-        if (deadZone != null) deadZone.OnZoneFilled -= GameOver;
-    }
+        private IInputHandler inputHandler;
+        private ICubeSpawner spawner;
 
-    private void Start()
-    {
-        SpawnNewCube();
-    }
+        private Cube currentCubeScript;
+        private bool isGameOver = false;
 
-    private void OnPlayerReleased()
-    {
-        if (isGameOver || currentCubeScript == null) return;
-        currentCubeScript = null;
-        StartCoroutine(SpawnRoutine(1f));
-    }
+        [Inject]
+        public void Construct(ICubeSpawner spawner, IInputHandler inputHandler)
+        {
+            this.inputHandler = inputHandler;
+            this.spawner = spawner;
+        }
 
-    private IEnumerator SpawnRoutine(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        SpawnNewCube();
-    }
+        private void OnEnable()
+        {
+            if (inputHandler != null) inputHandler.OnRelease += OnPlayerReleased;
+            if (deadZone != null) deadZone.OnZoneFilled += GameOver;
+        }
 
-    private void SpawnNewCube()
-    {
-        if (isGameOver) return;
-        currentCubeScript = cubeSpawner.Spawn();
-    }
+        private void OnDisable()
+        {
+            if (inputHandler != null) inputHandler.OnRelease -= OnPlayerReleased;
+            if (deadZone != null) deadZone.OnZoneFilled -= GameOver;
+        }
 
-    public void GameOver()
-    {
-        if (isGameOver) return;
-        isGameOver = true;
-        if (uiManager != null) uiManager.ShowGameOver();
-    }
+        private void Start()
+        {
+            SpawnNewCube();
+        }
 
-    public void RestartGame()
-    {
-        if (levelLoader != null) levelLoader.ReloadCurrentLevel();
+        private void OnPlayerReleased()
+        {
+            if (isGameOver || currentCubeScript == null) return;
+            currentCubeScript = null;
+            StartCoroutine(SpawnRoutine(1f));
+        }
+
+        private IEnumerator SpawnRoutine(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            SpawnNewCube();
+        }
+
+        public void SpawnNewCube()
+        {
+            if (spawner != null)
+            {
+                // Використовуємо метод інтерфейсу
+                currentCubeScript = spawner.Spawn();
+            }
+            else
+            {
+                Debug.LogError("[GameManager] Spawner is null! Check Zenject bindings.");
+            }
+        }
+
+        public void GameOver()
+        {
+            if (isGameOver) return;
+            isGameOver = true;
+            if (uiManager != null) uiManager.ShowGameOver();
+        }
+
+        public void RestartGame()
+        {
+            if (levelLoader != null) levelLoader.ReloadCurrentLevel();
+        }
     }
-}
 }

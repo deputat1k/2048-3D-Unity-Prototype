@@ -1,28 +1,21 @@
 using UnityEngine;
-using System;
-namespace Cube2048.Core
-{
-    public class ScoreBank : MonoBehaviour
-    {
+using System; // Для Action
+using Cube2048.Core.Interfaces;
 
+namespace Cube2048.Core // Перевір, чи правильний namespace у тебе
+{
+    public class ScoreBank : MonoBehaviour, IScoreService
+    {
+        public int CurrentScore { get; private set; }
 
         public event Action<int> OnScoreChanged;
 
-        private int score;
-
-        public int GetScore() => score;
-
         public void AddScore(int amount)
         {
-            score += amount;
+            CurrentScore += amount;
 
-            OnScoreChanged?.Invoke(score);
-        }
-
-        public void ResetScore()
-        {
-            score = 0;
-            OnScoreChanged?.Invoke(score);
+           
+            OnScoreChanged?.Invoke(CurrentScore);
         }
     }
 }

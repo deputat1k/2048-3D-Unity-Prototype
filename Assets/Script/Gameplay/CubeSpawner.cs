@@ -1,11 +1,12 @@
-﻿using UnityEngine;
+﻿using Cube2048.Core;
+using System.Collections.Generic;
+using UnityEngine;
 using Zenject;
-using Cube2048.Core;
-
+using Cube2048.Core.Interfaces;
 
 namespace Cube2048.Gameplay
 {
-    public class CubeSpawner : MonoBehaviour
+    public class CubeSpawner : MonoBehaviour, ICubeSpawner
     {
         [Header("Spawn Settings")]
         [SerializeField] private Cube cubePrefab;
@@ -20,6 +21,8 @@ namespace Cube2048.Gameplay
         private ObjectPool<Cube> pool;
         private DiContainer container;
 
+        public List<Cube> ActiveCubes { get; private set; } = new List<Cube>();
+
         [Inject]
         public void Construct(DiContainer container)
         {
@@ -33,28 +36,29 @@ namespace Cube2048.Gameplay
 
         public Cube Spawn()
         {
-           
             Cube cubeToSpawn = pool.GetElement();
+            ActiveCubes.Add(cubeToSpawn);
 
             cubeToSpawn.transform.position = spawnPoint.position;
             cubeToSpawn.ResetCube();
             cubeToSpawn.Init(leftBorder.position.x, rightBorder.position.x);
 
-            
             var presenter = cubeToSpawn.GetComponent<CubeInputPresenter>();
             if (presenter != null) presenter.enabled = true;
 
-            float random = Random.value;
-            cubeToSpawn.Value = (random > 0.75f) ? 4 : 2;
-            cubeToSpawn.UpdateVisuals();
+            // 🔥 ВИПРАВЛЕНО: Використовуємо метод SetValue замість прямого присвоєння
+            int startValue = (Random.value > 0.75f) ? 4 : 2;
+            cubeToSpawn.SetValue(startValue);
+
+            // cubeToSpawn.UpdateVisuals(); // Це можна прибрати, бо SetValue вже оновлює візуал
 
             return cubeToSpawn;
         }
 
         public Cube SpawnSpecific(Vector3 position, int value)
         {
-   
             Cube cubeToSpawn = pool.GetElement();
+            ActiveCubes.Add(cubeToSpawn);
 
             cubeToSpawn.transform.position = position;
             cubeToSpawn.ResetCube();
@@ -63,14 +67,20 @@ namespace Cube2048.Gameplay
             var presenter = cubeToSpawn.GetComponent<CubeInputPresenter>();
             if (presenter != null) presenter.enabled = false;
 
-            cubeToSpawn.Value = value;
-            cubeToSpawn.UpdateVisuals();
+            // 🔥 ВИПРАВЛЕНО: Використовуємо метод SetValue
+            cubeToSpawn.SetValue(value);
+
+            // cubeToSpawn.UpdateVisuals(); // Це теж можна прибрати
 
             return cubeToSpawn;
         }
 
         public void ReturnToPool(Cube cube)
         {
+            if (ActiveCubes.Contains(cube))
+            {
+                ActiveCubes.Remove(cube);
+            }
             pool.ReturnElement(cube);
         }
     }
