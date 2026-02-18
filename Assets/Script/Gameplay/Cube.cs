@@ -2,14 +2,13 @@
 using TMPro;
 using Zenject;
 using Cube2048.Data;
-using Cube2048.Core.Interfaces; // Підключаємо інтерфейси
+using Cube2048.Core.Interfaces;
 
 namespace Cube2048.Gameplay
 {
     public class Cube : MonoBehaviour
     {
         [Header("Settings")]
-        // Використовуємо backing field для властивості
         [SerializeField] private int initialValue = 2;
         [SerializeField] private GameSettings settings;
 
@@ -17,13 +16,12 @@ namespace Cube2048.Gameplay
         [SerializeField] private TMP_Text[] valueTexts;
         [SerializeField] private Renderer cubeRenderer;
 
-        // Властивість Value (Публічна для читання, приватна для запису)
         public int Value { get; private set; }
 
-        // 🔥 Тільки одна змінна для Спавнера (Інтерфейс)
-        private ICubeSpawner spawner;
+        // 🔥 НОВА ВЛАСТИВІСТЬ: Чи знаходиться куб у грі (вже вилетів)
+        public bool IsLaunched { get; private set; } = false;
 
-        // 🔥 Тільки одна змінна для Очок (Інтерфейс)
+        private ICubeSpawner spawner;
         private IScoreService scoreService;
 
         private Rigidbody rb;
@@ -32,7 +30,6 @@ namespace Cube2048.Gameplay
         private float maxX;
 
         [Inject]
-        // 🔥 Конструктор приймає ТІЛЬКИ інтерфейси
         public void Construct(ICubeSpawner spawner, IScoreService scoreService)
         {
             this.spawner = spawner;
@@ -42,7 +39,6 @@ namespace Cube2048.Gameplay
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
-            // Ініціалізуємо Value значенням з інспектора при старті
             Value = initialValue;
         }
 
@@ -57,7 +53,6 @@ namespace Cube2048.Gameplay
             maxX = rightLimit;
         }
 
-        // Метод для оновлення значення (наприклад, при спавні з пулу)
         public void SetValue(int newValue)
         {
             Value = newValue;
@@ -81,20 +76,17 @@ namespace Cube2048.Gameplay
         private Color GetColorForValue(int value)
         {
             if (settings == null || settings.CubeColors == null) return Color.white;
-
-            // value має бути > 0
             if (value <= 0) return Color.white;
-
             int index = (int)Mathf.Log(value, 2) - 1;
-
-            if (index >= 0 && index < settings.CubeColors.Length)
-                return settings.CubeColors[index];
-
+            if (index >= 0 && index < settings.CubeColors.Length) return settings.CubeColors[index];
             return Color.white;
         }
 
         public void Move(float deltaX)
         {
+            // Рухати можна тільки якщо ще не вистрелили
+            if (IsLaunched) return;
+
             if (settings == null) return;
             Vector3 pos = transform.position;
             pos.x += deltaX * settings.MoveSpeed * Time.deltaTime;
@@ -104,6 +96,9 @@ namespace Cube2048.Gameplay
 
         public void Shoot()
         {
+            // 🔥 ПОЗНАЧАЄМО, ЩО КУБ У ГРІ
+            IsLaunched = true;
+
             if (rb != null && settings != null)
             {
                 rb.AddForce(Vector3.forward * settings.PushForce, ForceMode.Impulse);
@@ -113,10 +108,12 @@ namespace Cube2048.Gameplay
         public void ResetCube()
         {
             hasMerged = false;
+            // 🔥 СКИДАЄМО СТАН: Куб знову "на старті" (чекає пострілу)
+            IsLaunched = false;
+
             if (rb != null)
             {
                 rb.isKinematic = false;
-                // Для Unity 6 використовуй linearVelocity, для старих - velocity
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
@@ -131,9 +128,11 @@ namespace Cube2048.Gameplay
 
         public void Bounce()
         {
+            // Якщо куб народився від злиття, він автоматично вважається "у грі"
+            IsLaunched = true;
+
             if (rb != null && settings != null)
             {
-                // Додаємо трохи рандому, щоб не стояли стовпчиком
                 Vector3 randomDir = Random.insideUnitSphere * 0.5f;
                 randomDir.y = 0;
                 rb.AddForce((Vector3.up + randomDir) * settings.MergePushForce, ForceMode.Impulse);
@@ -145,12 +144,10 @@ namespace Cube2048.Gameplay
             if (hasMerged) return;
             if (collision.gameObject == null) return;
 
-            // Намагаємось отримати компонент Cube
             if (collision.gameObject.TryGetComponent<Cube>(out Cube otherCube))
             {
                 if (otherCube.hasMerged) return;
 
-                // Перевірка: однакове значення і ID (щоб зливався тільки один, а не обидва одразу)
                 if (otherCube.Value == Value && this.GetInstanceID() < otherCube.GetInstanceID())
                 {
                     Merge(otherCube);
@@ -168,7 +165,6 @@ namespace Cube2048.Gameplay
             Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
             spawnPos.y += 0.5f;
 
-            // Використовуємо інтерфейси
             if (spawner != null)
             {
                 spawner.ReturnToPool(this);
@@ -183,7 +179,7 @@ namespace Cube2048.Gameplay
 
             if (scoreService != null)
             {
-                scoreService.AddScore(newValue); // Додаємо значення куба, а не 1
+                scoreService.AddScore(newValue);
             }
         }
     }

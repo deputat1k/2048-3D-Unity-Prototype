@@ -13,4 +13,7 @@ EditorBuildSettings:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 44798adfabf9d004194f8f7d8c234fde, type: 2}
     com.unity.adaptiveperformance.simulator.provider_settings: {fileID: 11400000, guid: 723facef7d4106145844f3744ca33632, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 05ac733ddf516ed48967d04ce5db8492, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 61eeba89effe9b64aabfd054c50ebe62, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 3f7237f1ef5ce66459efaba37d30aa47, type: 2}
   m_UseUCBPForAssetBundles: 0

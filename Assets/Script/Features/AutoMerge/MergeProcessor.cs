@@ -4,20 +4,20 @@ using Zenject;
 using Cysharp.Threading.Tasks;
 using Cube2048.Data;
 using Cube2048.Gameplay;
-using Cube2048.Core.Interfaces; // Підключаємо інтерфейси
+using Cube2048.Core.Interfaces;
 
 namespace Cube2048.Features.AutoMerge
 {
     public class MergeProcessor : MonoBehaviour
     {
         [SerializeField] private LightningSettings settings;
-        [SerializeField] private float mergeContactThreshold = 0.9f;
+
+        // Ми прибрали ручне налаштування дистанції. Все автоматично.
         [SerializeField] private float cameraOffsetDistance = 2.0f;
 
-        // 🔥 ВИКОРИСТОВУЄМО ІНТЕРФЕЙСИ
         private ICubeSpawner spawner;
-        private IScoreService scoreService; // Було scoreBank
-        private IMergeFX fxService;         // Було fxController
+        private IScoreService scoreService;
+        private IMergeFX fxService;
         private Camera mainCamera;
 
         [Inject]
@@ -36,15 +36,25 @@ namespace Cube2048.Features.AutoMerge
             DisablePhysics(cubeA);
             DisablePhysics(cubeB);
 
+            // 🔥 АВТОМАТИЧНИЙ РОЗРАХУНОК:
+            // Дистанція дотику = (половина ширини A) + (половина ширини B).
+            // Якщо куби розміром 1, то 0.5 + 0.5 = 1.0 (вони торкаються центрами).
+            float sizeA = cubeA.transform.localScale.x;
+            float sizeB = cubeB.transform.localScale.x;
+
+            // Множимо на 0.9, щоб вони трішки перекрили один одного (ефект удару)
+            float autoThreshold = ((sizeA / 2f) + (sizeB / 2f)) * 0.9f;
+
             Vector3 startPosA = cubeA.transform.position;
             Vector3 startPosB = cubeB.transform.position;
             Vector3 centerPos = (startPosA + startPosB) / 2f;
             Vector3 targetPos = centerPos + Vector3.up * settings.LiftHeight;
 
-            await AnimateMoveToTarget(cubeA, cubeB, targetPos, () =>
-            {
-                PlayMergeEffect(targetPos);
-            });
+            // Передаємо вирахуваний поріг у метод руху
+            await AnimateMoveToTouch(cubeA, cubeB, targetPos, autoThreshold);
+
+            // Ефект і логіка заміни
+            PlayMergeEffect(targetPos);
 
             if (cubeA == null || cubeB == null) return;
 
@@ -54,8 +64,7 @@ namespace Cube2048.Features.AutoMerge
             spawner.ReturnToPool(cubeA);
             spawner.ReturnToPool(cubeB);
 
-            // 🔥 ВИКЛИКАЄМО ЧЕРЕЗ ІНТЕРФЕЙС
-            scoreService?.AddScore(1);
+            scoreService?.AddScore(cubeA.Value * 2);
 
             int newValue = cubeA.Value * 2;
             Cube newCube = spawner.SpawnSpecific(targetPos, newValue);
@@ -68,11 +77,9 @@ namespace Cube2048.Features.AutoMerge
 
         private void PlayMergeEffect(Vector3 centerPosition)
         {
-            // 🔥 ВИКЛИКАЄМО ЧЕРЕЗ ІНТЕРФЕЙС (fxService замість fxController)
             if (fxService == null) return;
 
             Vector3 spawnPos = centerPosition;
-
             if (mainCamera != null)
             {
                 Vector3 directionToCamera = (mainCamera.transform.position - centerPosition).normalized;
@@ -82,13 +89,13 @@ namespace Cube2048.Features.AutoMerge
             fxService.PlayExplosion(spawnPos);
         }
 
-        private async UniTask AnimateMoveToTarget(Cube cubeA, Cube cubeB, Vector3 targetPos, Action onContact)
+        private async UniTask AnimateMoveToTouch(Cube cubeA, Cube cubeB, Vector3 targetPos, float stopDistance)
         {
             float elapsed = 0f;
             Vector3 startA = cubeA.transform.position;
             Vector3 startB = cubeB.transform.position;
-            bool hasTriggeredContact = false;
 
+            // Страховка: якщо анімація зависне, вона примусово закінчиться через заданий час
             while (elapsed < settings.MergeAnimDuration)
             {
                 if (cubeA == null || cubeB == null) return;
@@ -99,18 +106,17 @@ namespace Cube2048.Features.AutoMerge
                 cubeA.transform.position = Vector3.Lerp(startA, targetPos, t);
                 cubeB.transform.position = Vector3.Lerp(startB, targetPos, t);
 
+                // 🔥 ДИНАМІЧНА ПЕРЕВІРКА:
                 float currentDistance = Vector3.Distance(cubeA.transform.position, cubeB.transform.position);
 
-                if (!hasTriggeredContact && currentDistance <= mergeContactThreshold)
+                // Використовуємо автоматично вирахувану дистанцію
+                if (currentDistance <= stopDistance)
                 {
-                    onContact?.Invoke();
-                    hasTriggeredContact = true;
+                    return; // Миттєвий вихід -> миттєвий мердж
                 }
 
                 await UniTask.Yield();
             }
-
-            if (!hasTriggeredContact) onContact?.Invoke();
         }
 
         private void DisablePhysics(Cube cube)

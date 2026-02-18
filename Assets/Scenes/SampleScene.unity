@@ -2211,8 +2211,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   visuals: {fileID: 1114214411}
-  processor: {fileID: 1114214410}
-  settings: {fileID: 11400000, guid: 204541399dca9d247b0e61e7865fc0f1, type: 2}
 --- !u!114 &1114214410
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2630,7 +2628,7 @@ MonoBehaviour:
   uiManager: {fileID: 478394302}
   levelLoader: {fileID: 301097227}
   settings: {fileID: 11400000, guid: f0d5e93343ba6d142b35583bfbda5d8d, type: 2}
-  deadZone: {fileID: 0}
+  deadZone: {fileID: 691464499}
 --- !u!114 &1859430523
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,94 +1,157 @@
-﻿using Cube2048.Core;
+﻿using UnityEngine;
+using Zenject;
+using Cysharp.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 using Cube2048.Core.Interfaces;
 using Cube2048.Data;
 using Cube2048.Gameplay;
-using Cysharp.Threading.Tasks;
-using System.Collections.Generic;
-using UnityEngine;
-using Zenject;
 
 namespace Cube2048.Features.AutoMerge
 {
     public class AutoMergeController : MonoBehaviour, IAutoMergeService
     {
-        [Header("Modules")]
+        [Header("Visuals")]
         [SerializeField] private MergeVisuals visuals;
-        [SerializeField] private MergeProcessor processor;
-        [SerializeField] private LightningSettings settings;
 
         private ICubeSpawner spawner;
+        private MergeProcessor processor;
+        private IMergeStrategy mergeStrategy;
+
         private bool isRunning = true;
 
-        // Стан системи
+        // 🔥 НОВА ЗМІННА: Чи на паузі система?
+        private bool isPaused = false;
+
         private Cube bestCubeA;
         private Cube bestCubeB;
-        public bool IsMerging { get; private set; } = false;
-        public bool HasPair => bestCubeA != null && bestCubeB != null;
+
+        public event Action<bool> OnStatusChanged;
+
+        private bool _isMerging;
+        public bool IsMerging
+        {
+            get => _isMerging;
+            private set
+            {
+                if (_isMerging != value)
+                {
+                    _isMerging = value;
+                    NotifyStatusChanged();
+                }
+            }
+        }
+
+        // 🔥 ОНОВЛЕНА ЛОГІКА: Якщо пауза - пари немає
+        public bool HasPair => !isPaused && bestCubeA != null && bestCubeB != null && !IsMerging;
 
         [Inject]
-        public void Construct(ICubeSpawner spawner)
+        public void Construct(ICubeSpawner spawner, IMergeStrategy strategy, MergeProcessor processor)
         {
             this.spawner = spawner;
+            this.mergeStrategy = strategy;
+            this.processor = processor;
         }
 
         private void Start()
         {
-            if (visuals == null || processor == null || settings == null)
-            {
-                Debug.LogError("AutoMergeController: Modules missing!");
-                return;
-            }
             FindBestPairLoop().Forget();
             UpdateVisualsLoop().Forget();
         }
 
         private void OnDestroy() => isRunning = false;
 
-        private async UniTaskVoid FindBestPairLoop()
+        // 🔥 РЕАЛІЗАЦІЯ НОВОГО МЕТОДУ
+        public void SetPaused(bool paused)
         {
-            List<CubeData> dataSnapshot = new List<CubeData>();
+            isPaused = paused;
 
-            while (isRunning)
+            // Якщо поставили на паузу - ховаємо блискавку і оновлюємо кнопку
+            if (isPaused)
             {
-                if (IsMerging)
+                if (visuals != null) visuals.HideLightning();
+            }
+
+            NotifyStatusChanged(); // Кнопка перевірить HasPair і вимкнеться, бо isPaused = true
+        }
+
+        private void NotifyStatusChanged()
+        {
+            bool canInteract = HasPair && !IsMerging;
+            OnStatusChanged?.Invoke(canInteract);
+        }
+
+        private async UniTask FindBestPairLoop()
+        {
+            while (this != null && isRunning)
+            {
+                // 🔥 Якщо пауза - не шукаємо нові пари
+                if (!IsMerging && !isPaused)
                 {
-                    visuals.HideLightning();
-                    await UniTask.Delay(100);
-                    continue;
+                    // ... (тут твій старий код пошуку, без змін) ...
+                    var activeCubes = spawner.ActiveCubes;
+                    var snapshot = new List<CubeData>();
+                    var currentCubesRef = new List<Cube>();
+
+                    foreach (var cube in activeCubes)
+                    {
+                        if (cube == null || !cube.gameObject.activeInHierarchy) continue;
+                        if (!cube.IsLaunched) continue;
+
+                        snapshot.Add(new CubeData(cube.transform.position, cube.Value, cube.GetInstanceID()));
+                        currentCubesRef.Add(cube);
+                    }
+
+                    if (snapshot.Count < 2)
+                    {
+                        UpdatePair(null, null);
+                        await UniTask.Delay(500);
+                        continue;
+                    }
+
+                    var result = await UniTask.RunOnThreadPool(() =>
+                    {
+                        return mergeStrategy.FindBestPair(snapshot);
+                    });
+
+                    if (result.indexA != -1 && result.indexB != -1 &&
+                        result.indexA < currentCubesRef.Count && result.indexB < currentCubesRef.Count)
+                    {
+                        UpdatePair(currentCubesRef[result.indexA], currentCubesRef[result.indexB]);
+                    }
+                    else
+                    {
+                        UpdatePair(null, null);
+                    }
                 }
 
-                dataSnapshot.Clear();
-                foreach (var cube in spawner.ActiveCubes)
-                {
-                    if (cube == null || !cube.gameObject.activeInHierarchy) continue;
-                    var presenter = cube.GetComponent<CubeInputPresenter>();
-                    if (presenter != null && presenter.enabled) continue;
-                    dataSnapshot.Add(new CubeData(cube.GetInstanceID(), cube.transform.position, cube.Value));
-                }
+                await UniTask.Delay(500);
+            }
+        }
 
-                await UniTask.RunOnThreadPool(() =>
-                {
-                    MathUtils.FindBestPair(dataSnapshot, out int idA, out int idB);
-                    return (idA, idB);
-                }).ContinueWith(result =>
-                {
-                    bestCubeA = spawner.ActiveCubes.Find(c => c.GetInstanceID() == result.idA);
-                    bestCubeB = spawner.ActiveCubes.Find(c => c.GetInstanceID() == result.idB);
-                });
+        private void UpdatePair(Cube a, Cube b)
+        {
+            bool wasPair = HasPair;
+            bestCubeA = a;
+            bestCubeB = b;
 
-                await UniTask.Delay((int)(settings.CheckInterval * 1000));
+            // Якщо стан змінився (включаючи вплив isPaused)
+            if (wasPair != HasPair)
+            {
+                NotifyStatusChanged();
             }
         }
 
         private async UniTaskVoid UpdateVisualsLoop()
         {
-            while (isRunning)
+            while (this != null && isRunning)
             {
-                if (!IsMerging && HasPair)
+                // 🔥 Додали перевірку !isPaused
+                if (HasPair && !IsMerging && !isPaused && visuals != null)
                 {
                     visuals.ShowLightning(bestCubeA.transform.position, bestCubeB.transform.position);
                 }
-                else
+                else if (visuals != null)
                 {
                     visuals.HideLightning();
                 }
@@ -98,15 +161,17 @@ namespace Cube2048.Features.AutoMerge
 
         public async UniTask TriggerMerge()
         {
-            if (!HasPair || IsMerging) return;
+            // 🔥 Захист: якщо пауза - не зливаємо
+            if (!HasPair || IsMerging || isPaused) return;
 
             IsMerging = true;
-            visuals.HideLightning();
+            if (visuals != null) visuals.HideLightning();
+
             await processor.PerformMergeSequence(bestCubeA, bestCubeB);
 
-            await UniTask.Delay(500);
-            bestCubeA = null;
-            bestCubeB = null;
+            UpdatePair(null, null);
+
+            await UniTask.Delay(200);
             IsMerging = false;
         }
     }
