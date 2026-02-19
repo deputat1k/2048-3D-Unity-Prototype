@@ -53,5 +53,9 @@ public class GameInstaller : MonoInstaller
         Container.Bind<IMergeStrategy>()
             .To<NearestMergeStrategy>()
             .AsSingle();
+
+        Container.Bind<IMergeService>()
+            .To<MergeService>()
+            .AsSingle();
     }
 }

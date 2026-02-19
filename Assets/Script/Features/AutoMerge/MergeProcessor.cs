@@ -14,18 +14,16 @@ namespace Cube2048.Features.AutoMerge
         [SerializeField] private float cameraOffsetDistance = 2.0f;
         [SerializeField] private Camera mainCamera;
 
-        private ICubeSpawner spawner;
-        private IScoreService scoreService;
+        // 🔥 Залишили ТІЛЬКИ те, що потрібно для візуалу та виклику злиття
         private IMergeFX fxService;
-        
+        private IMergeService mergeService;
 
         [Inject]
-        public void Construct(ICubeSpawner spawner, IScoreService scoreService, IMergeFX fxService)
+        // 🔥 ПРАВИЛЬНИЙ CONSTRUCT (тільки FX та MergeService)
+        public void Construct(IMergeFX fxService, IMergeService mergeService)
         {
-            this.spawner = spawner;
-            this.scoreService = scoreService;
             this.fxService = fxService;
-            
+            this.mergeService = mergeService;
         }
 
         public async UniTask PerformMergeSequence(Cube cubeA, Cube cubeB)
@@ -51,21 +49,8 @@ namespace Cube2048.Features.AutoMerge
 
             if (cubeA == null || cubeB == null) return;
 
-            cubeA.gameObject.SetActive(false);
-            cubeB.gameObject.SetActive(false);
-
-            spawner.ReturnToPool(cubeA);
-            spawner.ReturnToPool(cubeB);
-
-            scoreService?.AddScore(cubeA.Value * 2);
-
-            int newValue = cubeA.Value * 2;
-            Cube newCube = spawner.SpawnSpecific(targetPos, newValue);
-
-            if (newCube != null)
-            {
-                newCube.Bounce();
-            }
+            // Тепер mergeService не null, і все спрацює ідеально
+            mergeService.ProcessMerge(cubeA, cubeB, targetPos);
         }
 
         private void PlayMergeEffect(Vector3 centerPosition)
@@ -88,7 +73,6 @@ namespace Cube2048.Features.AutoMerge
             Vector3 startA = cubeA.transform.position;
             Vector3 startB = cubeB.transform.position;
 
-          
             while (elapsed < settings.MergeAnimDuration)
             {
                 if (cubeA == null || cubeB == null) return;
@@ -99,10 +83,8 @@ namespace Cube2048.Features.AutoMerge
                 cubeA.transform.position = Vector3.Lerp(startA, targetPos, t);
                 cubeB.transform.position = Vector3.Lerp(startB, targetPos, t);
 
-               
                 float currentDistance = Vector3.Distance(cubeA.transform.position, cubeB.transform.position);
 
-             
                 if (currentDistance <= stopDistance)
                 {
                     return;

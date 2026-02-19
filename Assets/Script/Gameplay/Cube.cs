@@ -18,25 +18,21 @@ namespace Cube2048.Gameplay
 
         public int Value { get; private set; }
         public bool IsLaunched { get; private set; } = false;
+        public bool IsMerged { get; private set; } = false;
 
-        private ICubeSpawner spawner;
-        private IScoreService scoreService;
+        private IMergeService mergeService;
         private Rigidbody rb;
-        private bool hasMerged = false;
 
-     
         private float minX;
         private float maxX;
-
         private float targetX;
         private float currentX;
         private float currentVelocity;
 
         [Inject]
-        public void Construct(ICubeSpawner spawner, IScoreService scoreService)
+        public void Construct(IMergeService mergeService)
         {
-            this.spawner = spawner;
-            this.scoreService = scoreService;
+            this.mergeService = mergeService;
         }
 
         private void Awake()
@@ -61,52 +57,41 @@ namespace Cube2048.Gameplay
             currentVelocity = 0f;
         }
 
-        public void SetValue(int newValue)
-        {
-            Value = newValue;
-            UpdateVisuals();
-        }
+        public void SetValue(int newValue) { Value = newValue; UpdateVisuals(); }
+
+        public void MarkAsMerged() => IsMerged = true; 
 
         public void UpdateVisuals()
         {
             if (valueTexts != null)
-            {
-                foreach (var text in valueTexts)
-                    if (text != null) text.text = Value.ToString();
-            }
+                foreach (var text in valueTexts) if (text != null) text.text = Value.ToString();
 
             if (cubeRenderer != null && settings != null)
-            {
                 cubeRenderer.material.color = GetColorForValue(Value);
-            }
         }
+
         private void Update()
         {
             if (!IsLaunched && settings != null)
             {
-             
-                float smoothTimeSeconds = 0.1f;
-
-                currentX = Mathf.SmoothDamp(currentX, targetX, ref currentVelocity, smoothTimeSeconds);
-
+                currentX = Mathf.SmoothDamp(currentX, targetX, ref currentVelocity, 0.1f);
                 Vector3 pos = transform.position;
                 pos.x = currentX;
                 transform.position = pos;
             }
         }
+
         private Color GetColorForValue(int value)
         {
             if (settings == null || settings.CubeColors == null) return Color.white;
             if (value <= 0) return Color.white;
             int index = (int)Mathf.Log(value, 2) - 1;
-            if (index >= 0 && index < settings.CubeColors.Length) return settings.CubeColors[index];
-            return Color.white;
+            return (index >= 0 && index < settings.CubeColors.Length) ? settings.CubeColors[index] : Color.white;
         }
 
         public void Move(float deltaX)
         {
             if (IsLaunched || settings == null) return;
-
             targetX += deltaX * settings.MoveSpeed * Time.deltaTime;
             targetX = Mathf.Clamp(targetX, minX, maxX);
         }
@@ -116,16 +101,12 @@ namespace Cube2048.Gameplay
             IsLaunched = true;
             targetX = transform.position.x;
             currentX = transform.position.x;
-
-            if (rb != null && settings != null)
-            {
-                rb.AddForce(Vector3.forward * settings.PushForce, ForceMode.Impulse);
-            }
+            if (rb != null && settings != null) rb.AddForce(Vector3.forward * settings.PushForce, ForceMode.Impulse);
         }
 
         public void ResetCube()
         {
-            hasMerged = false;
+            IsMerged = false;
             IsLaunched = false;
 
             if (rb != null)
@@ -141,15 +122,11 @@ namespace Cube2048.Gameplay
             currentX = transform.position.x;
         }
 
-        public void Deactivate()
-        {
-            gameObject.SetActive(false);
-        }
+        public void Deactivate() => gameObject.SetActive(false);
 
         public void Bounce()
         {
             IsLaunched = true;
-
             if (rb != null && settings != null)
             {
                 Vector3 randomDir = Random.insideUnitSphere * 0.5f;
@@ -160,45 +137,20 @@ namespace Cube2048.Gameplay
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (hasMerged) return;
+            if (IsMerged) return;
             if (collision.gameObject == null) return;
 
             if (collision.gameObject.TryGetComponent<Cube>(out Cube otherCube))
             {
-                if (otherCube.hasMerged) return;
+                if (otherCube.IsMerged) return;
 
                 if (otherCube.Value == Value && this.GetInstanceID() < otherCube.GetInstanceID())
                 {
-                    Merge(otherCube);
+                    Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
+                    spawnPos.y += 0.5f;
+
+                    mergeService.ProcessMerge(this, otherCube, spawnPos);
                 }
-            }
-        }
-
-        private void Merge(Cube otherCube)
-        {
-            hasMerged = true;
-            otherCube.hasMerged = true;
-
-            int newValue = Value * 2;
-
-            Vector3 spawnPos = (transform.position + otherCube.transform.position) / 2f;
-            spawnPos.y += 0.5f;
-
-            if (spawner != null)
-            {
-                spawner.ReturnToPool(this);
-                spawner.ReturnToPool(otherCube);
-
-                Cube newCube = spawner.SpawnSpecific(spawnPos, newValue);
-                if (newCube != null)
-                {
-                    newCube.Bounce();
-                }
-            }
-
-            if (scoreService != null)
-            {
-                scoreService.AddScore(newValue);
             }
         }
     }

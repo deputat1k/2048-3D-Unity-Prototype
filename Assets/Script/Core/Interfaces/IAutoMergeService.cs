@@ -7,6 +7,7 @@ namespace Cube2048.Core.Interfaces
     {
         bool HasPair { get; }
         bool IsMerging { get; }
+        bool IsOnCooldown { get; }
         UniTask TriggerMerge();
 
         event Action<bool> OnStatusChanged;

@@ -16,6 +16,7 @@ namespace Cube2048.Features.AutoMerge
 
         [Header("Settings")]
         [SerializeField] private LightningSettings settings;
+        [SerializeField] private float cooldownTime = 30f;
 
         private ICubeSpawner spawner;
         private MergeProcessor processor;
@@ -29,7 +30,8 @@ namespace Cube2048.Features.AutoMerge
         private Cube bestCubeB;
 
         public event Action<bool> OnStatusChanged;
-        public bool HasPair => !isPaused && bestCubeA != null && bestCubeB != null && !IsMerging;
+        public bool HasPair => !isPaused && !IsOnCooldown && bestCubeA != null && bestCubeB != null && !IsMerging;
+        public bool IsOnCooldown { get; private set; } = false;
 
         public bool IsMerging
         {
@@ -43,6 +45,7 @@ namespace Cube2048.Features.AutoMerge
                 }
             }
         }
+        
 
         [Inject]
         public void Construct(ICubeSpawner spawner, IMergeStrategy strategy, MergeProcessor processor)
@@ -74,7 +77,7 @@ namespace Cube2048.Features.AutoMerge
 
         private void NotifyStatusChanged()
         {
-            bool canInteract = HasPair && !IsMerging;
+            bool canInteract = HasPair && !IsMerging && !IsOnCooldown;
             OnStatusChanged?.Invoke(canInteract);
         }
 
@@ -170,7 +173,7 @@ namespace Cube2048.Features.AutoMerge
         public async UniTask TriggerMerge()
         {
 
-            if (!HasPair || IsMerging || isPaused) return;
+            if (!HasPair || IsMerging || isPaused || IsOnCooldown) return;
 
             IsMerging = true;
             if (visuals != null) visuals.HideLightning();
@@ -181,6 +184,19 @@ namespace Cube2048.Features.AutoMerge
 
             await UniTask.Delay(200);
             IsMerging = false;
+
+            RunCooldownRoutine().Forget();
+        }
+        private async UniTaskVoid RunCooldownRoutine()
+        {
+            IsOnCooldown = true;
+            NotifyStatusChanged(); 
+
+         
+            await UniTask.Delay(TimeSpan.FromSeconds(cooldownTime));
+
+            IsOnCooldown = false;
+            NotifyStatusChanged();
         }
     }
 }
