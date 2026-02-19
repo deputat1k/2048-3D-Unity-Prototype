@@ -35,7 +35,7 @@ namespace Cube2048.Core
         {
          
             
-            Application.targetFrameRate = -1;
+            Application.targetFrameRate = 120;
             QualitySettings.vSyncCount = 0;
         }
         private void OnEnable()

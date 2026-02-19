@@ -24,4 +24,4 @@ MonoBehaviour:
   - {r: 1, g: 0, b: 0.8399143, a: 0}
   - {r: 0.35548162, g: 0, b: 1, a: 0}
   - {r: 1, g: 0.97296894, b: 0, a: 0}
-  SmoothTime: 50
+  SmoothTime: 15
