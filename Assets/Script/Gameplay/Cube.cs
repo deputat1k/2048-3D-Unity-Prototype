@@ -17,17 +17,20 @@ namespace Cube2048.Gameplay
         [SerializeField] private Renderer cubeRenderer;
 
         public int Value { get; private set; }
-
-        // 🔥 НОВА ВЛАСТИВІСТЬ: Чи знаходиться куб у грі (вже вилетів)
         public bool IsLaunched { get; private set; } = false;
 
         private ICubeSpawner spawner;
         private IScoreService scoreService;
-
         private Rigidbody rb;
         private bool hasMerged = false;
+
+     
         private float minX;
         private float maxX;
+
+        private float targetX;
+        private float currentX;
+        private float currentVelocity;
 
         [Inject]
         public void Construct(ICubeSpawner spawner, IScoreService scoreService)
@@ -45,12 +48,17 @@ namespace Cube2048.Gameplay
         private void Start()
         {
             UpdateVisuals();
+            targetX = transform.position.x;
+            currentX = transform.position.x;
         }
 
         public void Init(float leftLimit, float rightLimit)
         {
             minX = leftLimit;
             maxX = rightLimit;
+            targetX = transform.position.x;
+            currentX = transform.position.x;
+            currentVelocity = 0f;
         }
 
         public void SetValue(int newValue)
@@ -72,7 +80,20 @@ namespace Cube2048.Gameplay
                 cubeRenderer.material.color = GetColorForValue(Value);
             }
         }
+        private void Update()
+        {
+            if (!IsLaunched && settings != null)
+            {
+             
+                float smoothTimeSeconds = 0.1f;
 
+                currentX = Mathf.SmoothDamp(currentX, targetX, ref currentVelocity, smoothTimeSeconds);
+
+                Vector3 pos = transform.position;
+                pos.x = currentX;
+                transform.position = pos;
+            }
+        }
         private Color GetColorForValue(int value)
         {
             if (settings == null || settings.CubeColors == null) return Color.white;
@@ -84,20 +105,17 @@ namespace Cube2048.Gameplay
 
         public void Move(float deltaX)
         {
-            // Рухати можна тільки якщо ще не вистрелили
-            if (IsLaunched) return;
+            if (IsLaunched || settings == null) return;
 
-            if (settings == null) return;
-            Vector3 pos = transform.position;
-            pos.x += deltaX * settings.MoveSpeed * Time.deltaTime;
-            pos.x = Mathf.Clamp(pos.x, minX, maxX);
-            transform.position = pos;
+            targetX += deltaX * settings.MoveSpeed * Time.deltaTime;
+            targetX = Mathf.Clamp(targetX, minX, maxX);
         }
 
         public void Shoot()
         {
-            // 🔥 ПОЗНАЧАЄМО, ЩО КУБ У ГРІ
             IsLaunched = true;
+            targetX = transform.position.x;
+            currentX = transform.position.x;
 
             if (rb != null && settings != null)
             {
@@ -108,7 +126,6 @@ namespace Cube2048.Gameplay
         public void ResetCube()
         {
             hasMerged = false;
-            // 🔥 СКИДАЄМО СТАН: Куб знову "на старті" (чекає пострілу)
             IsLaunched = false;
 
             if (rb != null)
@@ -119,6 +136,9 @@ namespace Cube2048.Gameplay
             }
             transform.rotation = Quaternion.identity;
             gameObject.SetActive(true);
+
+            targetX = transform.position.x;
+            currentX = transform.position.x;
         }
 
         public void Deactivate()
@@ -128,7 +148,6 @@ namespace Cube2048.Gameplay
 
         public void Bounce()
         {
-            // Якщо куб народився від злиття, він автоматично вважається "у грі"
             IsLaunched = true;
 
             if (rb != null && settings != null)

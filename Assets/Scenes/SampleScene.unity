@@ -2211,6 +2211,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   visuals: {fileID: 1114214411}
+  settings: {fileID: 11400000, guid: 204541399dca9d247b0e61e7865fc0f1, type: 2}
 --- !u!114 &1114214410
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2224,8 +2225,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   settings: {fileID: 11400000, guid: 204541399dca9d247b0e61e7865fc0f1, type: 2}
-  mergeContactThreshold: 0.6
   cameraOffsetDistance: 1.5
+  mainCamera: {fileID: 330585545}
 --- !u!114 &1114214411
 MonoBehaviour:
   m_ObjectHideFlags: 0

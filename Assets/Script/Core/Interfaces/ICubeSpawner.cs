@@ -10,7 +10,6 @@ namespace Cube2048.Core.Interfaces
         Cube SpawnSpecific(Vector3 position, int value);
         void ReturnToPool(Cube cube);
 
-        
-        List<Cube> ActiveCubes { get; }
+        IReadOnlyList<Gameplay.Cube> ActiveCubes { get; }
     }
 }

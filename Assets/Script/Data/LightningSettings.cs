@@ -9,10 +9,9 @@ namespace Cube2048.Data
         public Color Color = Color.cyan;
         public float Width = 0.1f;
 
-        [Tooltip("Наскільки високо піднімати дугу")]
-        public float ArcHeight = 2.0f; // 🔥 НОВЕ: Висота дуги
-        [Tooltip("Скільки точок у лінії (більше = плавніше)")]
-        public int ArcSegments = 20;   // 🔥 НОВЕ: Кількість сегментів
+        [Header("Settings")]
+        public float ArcHeight = 2.0f; //Висота 
+        public int ArcSegments = 20;   // кількість сегментів (чим більше плавніше)
 
         [Header("Timing")]
         public float CheckInterval = 0.2f;

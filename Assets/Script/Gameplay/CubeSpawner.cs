@@ -21,7 +21,8 @@ namespace Cube2048.Gameplay
         private ObjectPool<Cube> pool;
         private DiContainer container;
 
-        public List<Cube> ActiveCubes { get; private set; } = new List<Cube>();
+        private List<Cube> activeCubesList = new List<Cube>();
+        public IReadOnlyList<Cube> ActiveCubes => activeCubesList;
 
         [Inject]
         public void Construct(DiContainer container)
@@ -37,20 +38,20 @@ namespace Cube2048.Gameplay
         public Cube Spawn()
         {
             Cube cubeToSpawn = pool.GetElement();
-            ActiveCubes.Add(cubeToSpawn);
+
+            activeCubesList.Add(cubeToSpawn);
 
             cubeToSpawn.transform.position = spawnPoint.position;
             cubeToSpawn.ResetCube();
             cubeToSpawn.Init(leftBorder.position.x, rightBorder.position.x);
 
             var presenter = cubeToSpawn.GetComponent<CubeInputPresenter>();
+
             if (presenter != null) presenter.enabled = true;
 
-            // 🔥 ВИПРАВЛЕНО: Використовуємо метод SetValue замість прямого присвоєння
             int startValue = (Random.value > 0.75f) ? 4 : 2;
-            cubeToSpawn.SetValue(startValue);
 
-            // cubeToSpawn.UpdateVisuals(); // Це можна прибрати, бо SetValue вже оновлює візуал
+            cubeToSpawn.SetValue(startValue);
 
             return cubeToSpawn;
         }
@@ -58,28 +59,26 @@ namespace Cube2048.Gameplay
         public Cube SpawnSpecific(Vector3 position, int value)
         {
             Cube cubeToSpawn = pool.GetElement();
-            ActiveCubes.Add(cubeToSpawn);
+            activeCubesList.Add(cubeToSpawn);
 
             cubeToSpawn.transform.position = position;
             cubeToSpawn.ResetCube();
             cubeToSpawn.Init(leftBorder.position.x, rightBorder.position.x);
 
             var presenter = cubeToSpawn.GetComponent<CubeInputPresenter>();
+
             if (presenter != null) presenter.enabled = false;
 
-            // 🔥 ВИПРАВЛЕНО: Використовуємо метод SetValue
             cubeToSpawn.SetValue(value);
-
-            // cubeToSpawn.UpdateVisuals(); // Це теж можна прибрати
 
             return cubeToSpawn;
         }
 
         public void ReturnToPool(Cube cube)
         {
-            if (ActiveCubes.Contains(cube))
+            if (activeCubesList.Contains(cube))
             {
-                ActiveCubes.Remove(cube);
+                activeCubesList.Remove(cube);
             }
             pool.ReturnElement(cube);
         }

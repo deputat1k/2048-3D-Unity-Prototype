@@ -1,4 +1,4 @@
-using System.Collections;
+п»їusing System.Collections;
 using UnityEngine;
 using Zenject;
 using Cube2048.Gameplay;
@@ -18,15 +18,12 @@ namespace Cube2048.Core
 
         private IInputHandler inputHandler;
         private ICubeSpawner spawner;
-
-        //  ДОДАЄМО ЗАЛЕЖНІСТЬ
         private IAutoMergeService autoMergeService;
 
         private Cube currentCubeScript;
         private bool isGameOver = false;
 
         [Inject]
-        //  ОТРИМУЄМО СЕРВІС В КОНСТРУКТОРІ
         public void Construct(ICubeSpawner spawner, IInputHandler inputHandler, IAutoMergeService autoMergeService)
         {
             this.inputHandler = inputHandler;
@@ -34,6 +31,13 @@ namespace Cube2048.Core
             this.autoMergeService = autoMergeService;
         }
 
+        private void Awake()
+        {
+         
+            
+            Application.targetFrameRate = -1;
+            QualitySettings.vSyncCount = 0;
+        }
         private void OnEnable()
         {
             if (inputHandler != null) inputHandler.OnRelease += OnPlayerReleased;
@@ -61,7 +65,7 @@ namespace Cube2048.Core
         private IEnumerator SpawnRoutine(float delay)
         {
             yield return new WaitForSeconds(delay);
-            if (!isGameOver) // Перевірка, щоб не спавнити після програшу
+            if (!isGameOver)
             {
                 SpawnNewCube();
             }
@@ -80,7 +84,6 @@ namespace Cube2048.Core
             if (isGameOver) return;
             isGameOver = true;
 
-            // ВИМИКАЄМО АВТО-МЕРДЖ
             if (autoMergeService != null)
             {
                 autoMergeService.SetPaused(true);
@@ -91,10 +94,6 @@ namespace Cube2048.Core
 
         public void RestartGame()
         {
-            // При рестарті (перезавантаженні сцени) все скинеться саме,
-            // але якщо ти робиш м'який рестарт без перезавантаження сцени,
-            // то треба викликати autoMergeService.SetPaused(false);
-
             if (levelLoader != null) levelLoader.ReloadCurrentLevel();
         }
     }

@@ -155,7 +155,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a48b8b3ea428a04d9d8711370ac0611, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Value: 2
+  initialValue: 2
   settings: {fileID: 11400000, guid: f0d5e93343ba6d142b35583bfbda5d8d, type: 2}
   valueTexts:
   - {fileID: 3971548022882116319}

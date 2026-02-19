@@ -45,7 +45,8 @@ namespace Cube2048.Gameplay
                 {
                     OnZoneFilled?.Invoke();
 
-                    // Скидаємо, щоб не спамити
+              //щоб не спамити скидаєм
+
                     timer = 0f;
                     cubesInsideCount = 0;
                 }

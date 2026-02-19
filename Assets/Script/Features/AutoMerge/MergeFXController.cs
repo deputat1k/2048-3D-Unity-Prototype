@@ -7,10 +7,9 @@ namespace Cube2048.Features.AutoMerge
     public class MergeFXController : MonoBehaviour, IMergeFX
     {
         [Header("Settings")]
-        [SerializeField] private ParticleSystem explosionPrefab; // Префаб ефекту
-        [SerializeField] private int poolSize = 10; // Скільки тримати в пам'яті
+        [SerializeField] private ParticleSystem explosionPrefab;
+        [SerializeField] private int poolSize = 10;
 
-        // Черга готових ефектів
         private Queue<ParticleSystem> pool = new Queue<ParticleSystem>();
 
         private void Awake()
@@ -22,7 +21,7 @@ namespace Cube2048.Features.AutoMerge
         {
             if (explosionPrefab == null)
             {
-                Debug.LogError("MergeFXController: Prefab is missing!");
+                Debug.LogError("Prefab is missing!");
                 return;
             }
 
@@ -35,7 +34,7 @@ namespace Cube2048.Features.AutoMerge
         private ParticleSystem CreateNewItem()
         {
             ParticleSystem item = Instantiate(explosionPrefab, transform);
-            item.gameObject.SetActive(false); // Ховаємо одразу
+            item.gameObject.SetActive(false);
             pool.Enqueue(item);
             return item;
         }
@@ -44,21 +43,15 @@ namespace Cube2048.Features.AutoMerge
         {
             if (pool.Count == 0)
             {
-                // Якщо пул пустий - створюємо додатковий (резервний)
                 CreateNewItem();
             }
 
-            // Дістаємо з черги
             ParticleSystem effect = pool.Dequeue();
 
-            // Активуємо
             effect.transform.position = position;
             effect.gameObject.SetActive(true);
             effect.Play();
 
-            // Повертаємо в кінець черги (для наступного разу)
-            // Оскільки ми поставили "Stop Action: Disable" в Unity, 
-            // він сам вимкнеться, а ми його просто знову використаємо.
             pool.Enqueue(effect);
         }
     }

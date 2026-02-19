@@ -18,25 +18,40 @@ public class GameInstaller : MonoInstaller
 
     public override void InstallBindings()
     {
-        // 1. Spawner
-        Container.Bind<ICubeSpawner>().FromInstance(cubeSpawner).AsSingle();
+        
+        Container.Bind<ICubeSpawner>()
+            .FromInstance(cubeSpawner)
+            .AsSingle();
 
-        // 2. Score
-        Container.Bind<IScoreService>().FromInstance(scoreBank).AsSingle();
+        
+        Container.Bind<IScoreService>()
+            .FromInstance(scoreBank)
+            .AsSingle();
 
-        // 3. FX
-        Container.Bind<IMergeFX>().FromInstance(mergeFXController).AsSingle();
+        
+        Container.Bind<IMergeFX>()
+            .FromInstance(mergeFXController)
+            .AsSingle();
 
-        // 4. AutoMerge Service
-        Container.Bind<IAutoMergeService>().To<AutoMergeController>().FromInstance(autoMergeController).AsSingle();
+     
+        Container.Bind<IAutoMergeService>()
+            .To<AutoMergeController>()
+            .FromInstance(autoMergeController)
+            .AsSingle();
 
-        // 5. Processor (Ми його тепер інжектимо в контролер)
-        Container.Bind<MergeProcessor>().FromInstance(mergeProcessor).AsSingle();
+       
+        Container.Bind<MergeProcessor>()
+            .FromInstance(mergeProcessor)
+            .AsSingle();
 
-        // 6. Input
-        Container.Bind<IInputHandler>().FromInstance(inputHandler).AsSingle();
+      
+        Container.Bind<IInputHandler>()
+            .FromInstance(inputHandler)
+            .AsSingle();
 
-        // 7.  СТРАТЕГІЯ (Важливо для AutoMergeController)
-        Container.Bind<IMergeStrategy>().To<NearestMergeStrategy>().AsSingle();
+       
+        Container.Bind<IMergeStrategy>()
+            .To<NearestMergeStrategy>()
+            .AsSingle();
     }
 }

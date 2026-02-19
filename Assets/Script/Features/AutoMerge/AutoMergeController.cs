@@ -14,21 +14,23 @@ namespace Cube2048.Features.AutoMerge
         [Header("Visuals")]
         [SerializeField] private MergeVisuals visuals;
 
+        [Header("Settings")]
+        [SerializeField] private LightningSettings settings;
+
         private ICubeSpawner spawner;
         private MergeProcessor processor;
         private IMergeStrategy mergeStrategy;
 
         private bool isRunning = true;
-
-        // 🔥 НОВА ЗМІННА: Чи на паузі система?
         private bool isPaused = false;
+        private bool _isMerging;
 
         private Cube bestCubeA;
         private Cube bestCubeB;
 
         public event Action<bool> OnStatusChanged;
+        public bool HasPair => !isPaused && bestCubeA != null && bestCubeB != null && !IsMerging;
 
-        private bool _isMerging;
         public bool IsMerging
         {
             get => _isMerging;
@@ -41,9 +43,6 @@ namespace Cube2048.Features.AutoMerge
                 }
             }
         }
-
-        // 🔥 ОНОВЛЕНА ЛОГІКА: Якщо пауза - пари немає
-        public bool HasPair => !isPaused && bestCubeA != null && bestCubeB != null && !IsMerging;
 
         [Inject]
         public void Construct(ICubeSpawner spawner, IMergeStrategy strategy, MergeProcessor processor)
@@ -61,18 +60,16 @@ namespace Cube2048.Features.AutoMerge
 
         private void OnDestroy() => isRunning = false;
 
-        // 🔥 РЕАЛІЗАЦІЯ НОВОГО МЕТОДУ
         public void SetPaused(bool paused)
         {
             isPaused = paused;
 
-            // Якщо поставили на паузу - ховаємо блискавку і оновлюємо кнопку
             if (isPaused)
             {
                 if (visuals != null) visuals.HideLightning();
             }
 
-            NotifyStatusChanged(); // Кнопка перевірить HasPair і вимкнеться, бо isPaused = true
+            NotifyStatusChanged();
         }
 
         private void NotifyStatusChanged()
@@ -85,10 +82,10 @@ namespace Cube2048.Features.AutoMerge
         {
             while (this != null && isRunning)
             {
-                // 🔥 Якщо пауза - не шукаємо нові пари
+             
                 if (!IsMerging && !isPaused)
                 {
-                    // ... (тут твій старий код пошуку, без змін) ...
+                   
                     var activeCubes = spawner.ActiveCubes;
                     var snapshot = new List<CubeData>();
                     var currentCubesRef = new List<Cube>();
@@ -105,7 +102,7 @@ namespace Cube2048.Features.AutoMerge
                     if (snapshot.Count < 2)
                     {
                         UpdatePair(null, null);
-                        await UniTask.Delay(500);
+                        await UniTask.Delay(TimeSpan.FromSeconds(settings.CheckInterval));
                         continue;
                     }
 
@@ -125,7 +122,7 @@ namespace Cube2048.Features.AutoMerge
                     }
                 }
 
-                await UniTask.Delay(500);
+                await UniTask.Delay(TimeSpan.FromSeconds(settings.CheckInterval));
             }
         }
 
@@ -135,25 +132,36 @@ namespace Cube2048.Features.AutoMerge
             bestCubeA = a;
             bestCubeB = b;
 
-            // Якщо стан змінився (включаючи вплив isPaused)
+        
             if (wasPair != HasPair)
             {
                 NotifyStatusChanged();
             }
         }
 
-        private async UniTaskVoid UpdateVisualsLoop()
+        private async UniTask UpdateVisualsLoop()
         {
             while (this != null && isRunning)
             {
-                // 🔥 Додали перевірку !isPaused
-                if (HasPair && !IsMerging && !isPaused && visuals != null)
+
+                bool isPairValid = HasPair &&
+                                   bestCubeA != null && bestCubeA.gameObject.activeInHierarchy &&
+                                   bestCubeB != null && bestCubeB.gameObject.activeInHierarchy;
+
+                if (isPairValid && !IsMerging && !isPaused && visuals != null)
                 {
                     visuals.ShowLightning(bestCubeA.transform.position, bestCubeB.transform.position);
                 }
                 else if (visuals != null)
                 {
                     visuals.HideLightning();
+
+                    if (HasPair && !isPairValid)
+                    {
+                        bestCubeA = null;
+                        bestCubeB = null;
+                        NotifyStatusChanged(); 
+                    }
                 }
                 await UniTask.Yield();
             }
@@ -161,7 +169,7 @@ namespace Cube2048.Features.AutoMerge
 
         public async UniTask TriggerMerge()
         {
-            // 🔥 Захист: якщо пауза - не зливаємо
+
             if (!HasPair || IsMerging || isPaused) return;
 
             IsMerging = true;

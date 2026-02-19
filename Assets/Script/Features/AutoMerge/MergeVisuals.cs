@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using Cube2048.Data;
-using Cube2048.Core; // Підключаємо нашу математику
+using Cube2048.Core;
 
 namespace Cube2048.Features.AutoMerge
 {
@@ -11,8 +11,6 @@ namespace Cube2048.Features.AutoMerge
 
         [Header("Settings")]
         [SerializeField] private LightningSettings settings;
-
-        // 🔥 ВИПРАВЛЕННЯ БАГУ: Матеріал посиланням, а не кодом
         [SerializeField] private Material lightningMaterial;
 
         private void Start()
@@ -31,7 +29,6 @@ namespace Cube2048.Features.AutoMerge
             lightningRenderer.positionCount = settings.ArcSegments;
             lightningRenderer.enabled = false;
 
-           
             if (lightningMaterial != null)
             {
                 lightningRenderer.material = lightningMaterial;
@@ -43,8 +40,6 @@ namespace Cube2048.Features.AutoMerge
             if (lightningRenderer == null || settings == null) return;
 
             lightningRenderer.enabled = true;
-
-            // Якщо колір змінився у налаштуваннях - оновлюємо
             lightningRenderer.startColor = settings.Color;
             lightningRenderer.endColor = settings.Color;
 

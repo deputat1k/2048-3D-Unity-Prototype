@@ -1,4 +1,4 @@
-using System; // Потрібно для Action
+using System;
 
 namespace Cube2048.Core.Interfaces
 {

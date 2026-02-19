@@ -14,5 +14,8 @@ namespace Cube2048.Data
 
         [Header("Colors")]
         public Color[] CubeColors;
+
+        [Range(1f, 50f)]
+        public float SmoothTime = 15f;
     }
 }

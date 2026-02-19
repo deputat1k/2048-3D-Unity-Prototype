@@ -1,8 +1,8 @@
 using UnityEngine;
-using System; // Для Action
+using System;
 using Cube2048.Core.Interfaces;
 
-namespace Cube2048.Core // Перевір, чи правильний namespace у тебе
+namespace Cube2048.Core
 {
     public class ScoreBank : MonoBehaviour, IScoreService
     {

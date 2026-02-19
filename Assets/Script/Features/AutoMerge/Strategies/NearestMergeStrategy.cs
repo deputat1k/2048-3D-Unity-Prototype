@@ -17,7 +17,6 @@ namespace Cube2048.Features.AutoMerge.Strategies
             {
                 for (int j = i + 1; j < cubes.Count; j++)
                 {
-                    // Перевірка: значення мають бути рівні
                     if (cubes[i].Value == cubes[j].Value)
                     {
                         float dist = Vector3.Distance(cubes[i].Position, cubes[j].Position);

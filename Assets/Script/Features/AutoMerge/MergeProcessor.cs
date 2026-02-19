@@ -11,14 +11,13 @@ namespace Cube2048.Features.AutoMerge
     public class MergeProcessor : MonoBehaviour
     {
         [SerializeField] private LightningSettings settings;
-
-        // Ми прибрали ручне налаштування дистанції. Все автоматично.
         [SerializeField] private float cameraOffsetDistance = 2.0f;
+        [SerializeField] private Camera mainCamera;
 
         private ICubeSpawner spawner;
         private IScoreService scoreService;
         private IMergeFX fxService;
-        private Camera mainCamera;
+        
 
         [Inject]
         public void Construct(ICubeSpawner spawner, IScoreService scoreService, IMergeFX fxService)
@@ -26,7 +25,7 @@ namespace Cube2048.Features.AutoMerge
             this.spawner = spawner;
             this.scoreService = scoreService;
             this.fxService = fxService;
-            this.mainCamera = Camera.main;
+            
         }
 
         public async UniTask PerformMergeSequence(Cube cubeA, Cube cubeB)
@@ -36,13 +35,9 @@ namespace Cube2048.Features.AutoMerge
             DisablePhysics(cubeA);
             DisablePhysics(cubeB);
 
-            // 🔥 АВТОМАТИЧНИЙ РОЗРАХУНОК:
-            // Дистанція дотику = (половина ширини A) + (половина ширини B).
-            // Якщо куби розміром 1, то 0.5 + 0.5 = 1.0 (вони торкаються центрами).
             float sizeA = cubeA.transform.localScale.x;
             float sizeB = cubeB.transform.localScale.x;
 
-            // Множимо на 0.9, щоб вони трішки перекрили один одного (ефект удару)
             float autoThreshold = ((sizeA / 2f) + (sizeB / 2f)) * 0.9f;
 
             Vector3 startPosA = cubeA.transform.position;
@@ -50,10 +45,8 @@ namespace Cube2048.Features.AutoMerge
             Vector3 centerPos = (startPosA + startPosB) / 2f;
             Vector3 targetPos = centerPos + Vector3.up * settings.LiftHeight;
 
-            // Передаємо вирахуваний поріг у метод руху
             await AnimateMoveToTouch(cubeA, cubeB, targetPos, autoThreshold);
 
-            // Ефект і логіка заміни
             PlayMergeEffect(targetPos);
 
             if (cubeA == null || cubeB == null) return;
@@ -95,7 +88,7 @@ namespace Cube2048.Features.AutoMerge
             Vector3 startA = cubeA.transform.position;
             Vector3 startB = cubeB.transform.position;
 
-            // Страховка: якщо анімація зависне, вона примусово закінчиться через заданий час
+          
             while (elapsed < settings.MergeAnimDuration)
             {
                 if (cubeA == null || cubeB == null) return;
@@ -106,13 +99,13 @@ namespace Cube2048.Features.AutoMerge
                 cubeA.transform.position = Vector3.Lerp(startA, targetPos, t);
                 cubeB.transform.position = Vector3.Lerp(startB, targetPos, t);
 
-                // 🔥 ДИНАМІЧНА ПЕРЕВІРКА:
+               
                 float currentDistance = Vector3.Distance(cubeA.transform.position, cubeB.transform.position);
 
-                // Використовуємо автоматично вирахувану дистанцію
+             
                 if (currentDistance <= stopDistance)
                 {
-                    return; // Миттєвий вихід -> миттєвий мердж
+                    return;
                 }
 
                 await UniTask.Yield();
