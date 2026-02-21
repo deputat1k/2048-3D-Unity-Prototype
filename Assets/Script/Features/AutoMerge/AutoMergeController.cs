@@ -15,8 +15,8 @@ namespace Cube2048.Features.AutoMerge
         [SerializeField] private MergeVisuals visuals;
 
         [Header("Settings")]
-        [SerializeField] private LightningSettings settings;
         [SerializeField] private float cooldownTime = 30f;
+        [SerializeField] private float checkInterval = 0.5f;
 
         private ICubeSpawner spawner;
         private MergeProcessor processor;
@@ -45,7 +45,7 @@ namespace Cube2048.Features.AutoMerge
                 }
             }
         }
-        
+
 
         [Inject]
         public void Construct(ICubeSpawner spawner, IMergeStrategy strategy, MergeProcessor processor)
@@ -85,10 +85,10 @@ namespace Cube2048.Features.AutoMerge
         {
             while (this != null && isRunning)
             {
-             
+
                 if (!IsMerging && !isPaused)
                 {
-                   
+
                     var activeCubes = spawner.ActiveCubes;
                     var snapshot = new List<CubeData>();
                     var currentCubesRef = new List<Cube>();
@@ -105,7 +105,8 @@ namespace Cube2048.Features.AutoMerge
                     if (snapshot.Count < 2)
                     {
                         UpdatePair(null, null);
-                        await UniTask.Delay(TimeSpan.FromSeconds(settings.CheckInterval));
+                    
+                        await UniTask.Delay(TimeSpan.FromSeconds(checkInterval));
                         continue;
                     }
 
@@ -125,7 +126,8 @@ namespace Cube2048.Features.AutoMerge
                     }
                 }
 
-                await UniTask.Delay(TimeSpan.FromSeconds(settings.CheckInterval));
+          
+                await UniTask.Delay(TimeSpan.FromSeconds(checkInterval));
             }
         }
 
@@ -135,7 +137,7 @@ namespace Cube2048.Features.AutoMerge
             bestCubeA = a;
             bestCubeB = b;
 
-        
+
             if (wasPair != HasPair)
             {
                 NotifyStatusChanged();
@@ -153,7 +155,7 @@ namespace Cube2048.Features.AutoMerge
 
                 if (isPairValid && !IsMerging && !isPaused && visuals != null)
                 {
-                    visuals.ShowLightning(bestCubeA.transform.position, bestCubeB.transform.position);
+                    visuals.ShowLightning(bestCubeA.transform, bestCubeB.transform);
                 }
                 else if (visuals != null)
                 {
@@ -163,7 +165,7 @@ namespace Cube2048.Features.AutoMerge
                     {
                         bestCubeA = null;
                         bestCubeB = null;
-                        NotifyStatusChanged(); 
+                        NotifyStatusChanged();
                     }
                 }
                 await UniTask.Yield();
@@ -190,9 +192,9 @@ namespace Cube2048.Features.AutoMerge
         private async UniTaskVoid RunCooldownRoutine()
         {
             IsOnCooldown = true;
-            NotifyStatusChanged(); 
+            NotifyStatusChanged();
 
-         
+
             await UniTask.Delay(TimeSpan.FromSeconds(cooldownTime));
 
             IsOnCooldown = false;

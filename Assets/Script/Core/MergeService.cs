@@ -27,18 +27,15 @@ namespace Cube2048.Gameplay
 
             int newValue = cubeA.Value * 2;
 
-            // Ховаємо старі куби
             spawner.ReturnToPool(cubeA);
             spawner.ReturnToPool(cubeB);
 
-            // Спавнимо новий
             Cube newCube = spawner.SpawnSpecific(spawnPosition, newValue);
             if (newCube != null)
             {
                 newCube.Bounce();
             }
 
-            // Нараховуємо очки ТІЛЬКИ ТУТ
             scoreService?.AddScore(newValue);
         }
     }

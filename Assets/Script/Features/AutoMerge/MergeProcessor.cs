@@ -10,16 +10,18 @@ namespace Cube2048.Features.AutoMerge
 {
     public class MergeProcessor : MonoBehaviour
     {
-        [SerializeField] private LightningSettings settings;
-        [SerializeField] private float cameraOffsetDistance = 2.0f;
-        [SerializeField] private Camera mainCamera;
+        [SerializeField] private GameObject mergeContainerPrefab;
 
-        // 🔥 Залишили ТІЛЬКИ те, що потрібно для візуалу та виклику злиття
+        [Header("Timings & Height")]
+
+        [SerializeField] private float liftHeight = 1.5f;
+        [SerializeField] private float liftDuration = 0.6f;
+        [SerializeField] private float animationDuration = 0.5f;
+
         private IMergeFX fxService;
         private IMergeService mergeService;
 
         [Inject]
-        // 🔥 ПРАВИЛЬНИЙ CONSTRUCT (тільки FX та MergeService)
         public void Construct(IMergeFX fxService, IMergeService mergeService)
         {
             this.fxService = fxService;
@@ -33,65 +35,78 @@ namespace Cube2048.Features.AutoMerge
             DisablePhysics(cubeA);
             DisablePhysics(cubeB);
 
-            float sizeA = cubeA.transform.localScale.x;
-            float sizeB = cubeB.transform.localScale.x;
+            Vector3 centerPos = (cubeA.transform.position + cubeB.transform.position) / 2f;
+       
+            centerPos += Vector3.up * liftHeight;
 
-            float autoThreshold = ((sizeA / 2f) + (sizeB / 2f)) * 0.9f;
+            GameObject container = Instantiate(mergeContainerPrefab, centerPos, Quaternion.identity);
 
-            Vector3 startPosA = cubeA.transform.position;
-            Vector3 startPosB = cubeB.transform.position;
-            Vector3 centerPos = (startPosA + startPosB) / 2f;
-            Vector3 targetPos = centerPos + Vector3.up * settings.LiftHeight;
+            Animator anim = container.GetComponent<Animator>();
+            if (anim != null) anim.enabled = false;
 
-            await AnimateMoveToTouch(cubeA, cubeB, targetPos, autoThreshold);
+            Transform slotA = container.transform.Find("SlotA");
+            Transform slotB = container.transform.Find("SlotB");
 
-            PlayMergeEffect(targetPos);
 
-            if (cubeA == null || cubeB == null) return;
-
-            // Тепер mergeService не null, і все спрацює ідеально
-            mergeService.ProcessMerge(cubeA, cubeB, targetPos);
-        }
-
-        private void PlayMergeEffect(Vector3 centerPosition)
-        {
-            if (fxService == null) return;
-
-            Vector3 spawnPos = centerPosition;
-            if (mainCamera != null)
+            Transform targetA, targetB;
+            if (cubeA.transform.position.x < cubeB.transform.position.x)
             {
-                Vector3 directionToCamera = (mainCamera.transform.position - centerPosition).normalized;
-                spawnPos = centerPosition + (directionToCamera * cameraOffsetDistance);
+                targetA = slotA;
+                targetB = slotB;
+            }
+            else
+            {
+                targetA = slotB;
+                targetB = slotA;
             }
 
-            fxService.PlayExplosion(spawnPos);
-        }
 
-        private async UniTask AnimateMoveToTouch(Cube cubeA, Cube cubeB, Vector3 targetPos, float stopDistance)
-        {
             float elapsed = 0f;
-            Vector3 startA = cubeA.transform.position;
-            Vector3 startB = cubeB.transform.position;
+            Vector3 startPosA = cubeA.transform.position;
+            Vector3 startPosB = cubeB.transform.position;
 
-            while (elapsed < settings.MergeAnimDuration)
+            while (elapsed < liftDuration)
             {
                 if (cubeA == null || cubeB == null) return;
 
                 elapsed += Time.deltaTime;
-                float t = elapsed / settings.MergeAnimDuration;
+                float t = elapsed / liftDuration;
 
-                cubeA.transform.position = Vector3.Lerp(startA, targetPos, t);
-                cubeB.transform.position = Vector3.Lerp(startB, targetPos, t);
+                float smoothT = t * t * (3f - 2f * t);
 
-                float currentDistance = Vector3.Distance(cubeA.transform.position, cubeB.transform.position);
-
-                if (currentDistance <= stopDistance)
-                {
-                    return;
-                }
+                cubeA.transform.position = Vector3.Lerp(startPosA, targetA.position, smoothT);
+                cubeB.transform.position = Vector3.Lerp(startPosB, targetB.position, smoothT);
 
                 await UniTask.Yield();
             }
+
+            cubeA.transform.SetParent(targetA);
+            cubeA.transform.localPosition = Vector3.zero;
+            cubeA.transform.localRotation = Quaternion.identity;
+
+            cubeB.transform.SetParent(targetB);
+            cubeB.transform.localPosition = Vector3.zero;
+            cubeB.transform.localRotation = Quaternion.identity;
+
+            if (anim != null) anim.enabled = true;
+
+            await UniTask.Delay(TimeSpan.FromSeconds(animationDuration));
+
+            PlayMergeEffect(centerPos);
+
+            if (cubeA != null && cubeB != null)
+            {
+                cubeA.transform.SetParent(null);
+                cubeB.transform.SetParent(null);
+                mergeService.ProcessMerge(cubeA, cubeB, centerPos);
+            }
+
+            if (container != null) Destroy(container);
+        }
+
+        private void PlayMergeEffect(Vector3 centerPosition)
+        {
+            if (fxService != null) fxService.PlayExplosion(centerPosition);
         }
 
         private void DisablePhysics(Cube cube)
